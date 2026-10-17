@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swatch Kit 示範</title>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; background: #f6f3ee; color: #222; }
+  main { max-width: 560px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 4px 0 12px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  button { font: inherit; font-size: 16px; padding: 10px 16px; border-radius: 12px; border: 1px solid #bbb; background: #fff; }
+  label { font-size: 14px; }
+  input[type=number] { width: 64px; font: inherit; padding: 6px; }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cmp figure { margin: 0; }
+  .cmp figcaption { font-size: 13px; color: #666; margin-bottom: 4px; }
+  .tiles { aspect-ratio: 1; border-radius: 10px; border: 1px solid #ccc; background: #fff; }
+  svg { width: 100%; height: auto; display: block; }
+  p.note { font-size: 13px; color: #666; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Swatch Kit 示範</h1>
+  <div class="row">
+    <button id="cam" type="button">📷 拍照</button>
+    <button id="album" type="button">🖼 相簿</button>
+    <label>框代表 <input id="cm" type="number" value="30" min="2" max="100"> cm</label>
+  </div>
+  <div class="row"><label>下面兩格各代表 <input id="show" type="number" value="20" min="2" max="100"> × 同尺寸 cm</label></div>
+
+  <div class="cmp">
+    <figure><figcaption>原始照片直接重複</figcaption><div class="tiles" id="raw"></div></figure>
+    <figure><figcaption>2+ 拉平光線再融合</figcaption><div class="tiles" id="fix"></div></figure>
+  </div>
+
+  <h1 style="margin-top:18px">套在紙娃娃衣服上</h1>
+  <svg id="doll" viewBox="0 0 200 260" aria-label="Dress preview"></svg>
+  <p class="note">衣服的寬度當作 50 cm，所以每 4 個單位 = 1 cm。</p>
+</main>
+
+<script src="swatch-kit.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  let raw = null, fixed = null, cm = 30;
+
+  async function get(source) {
+    cm = +$("cm").value || 30;
+    // Ask for the plain crop, then make the seamless copy ourselves, so the demo can show both.
+    const sw = await SwatchKit.capture({ source, sizeCm: cm, seamless: false });
+    if (!sw) return;
+    raw = sw.url;
+    fixed = SwatchKit.makeSeamless(sw.canvas).toDataURL("image/jpeg", 0.85);
+    draw();
+  }
+  function draw() {
+    if (!raw) return;
+    const area = +$("show").value || 20, box = $("raw").clientWidth, pxPerCm = box / area;
+    Object.assign($("raw").style, SwatchKit.cssBackground(raw, cm, pxPerCm));
+    Object.assign($("fix").style, SwatchKit.cssBackground(fixed, cm, pxPerCm));
+    const unitsPerCm = 4;  // the dress is 200 units ≈ 50 cm wide
+    $("doll").innerHTML = `<defs>${SwatchKit.svgPattern("dress", fixed, cm, unitsPerCm)}</defs>
+      <path d="M78 20 Q100 34 122 20 L150 40 L138 66 L128 60 L132 110 L172 236 Q100 252 28 236 L68 110 L72 60 L62 66 L50 40 Z"
+            fill="url(#dress)" stroke="#333" stroke-width="2" stroke-linejoin="round"/>`;
+  }
+  $("cam").onclick = () => get("camera");
+  $("album").onclick = () => get("album");
+  $("show").oninput = draw;
+  addEventListener("resize", draw);
+  $("doll").innerHTML = `<path d="M78 20 Q100 34 122 20 L150 40 L138 66 L128 60 L132 110 L172 236 Q100 252 28 236 L68 110 L72 60 L62 66 L50 40 Z" fill="#fff" stroke="#333" stroke-width="2" stroke-linejoin="round"/>`;
+</script>
+</body>
+</html>

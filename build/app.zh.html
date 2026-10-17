@@ -1,0 +1,597 @@
+<title>Paperdoll 紙娃娃畫板</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Yellowtail&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: pink pattern-shop band on top; croquis sheet centre with a slide-out Designs drawer; camera/undo row, trim tools and swatch strip below (vintage pattern-envelope feel) */
+:root{
+  --paper:#fffaf8; --panel:#fff; --blush:#fbe7ec; --pink:#e8698a; --pink-deep:#c94d6f; --on-pink:#fff;
+  --ink:#3a2a2f; --muted:#8b6f77; --line:#efd6dd; --dot:#f3dfe4; --chip:#f7eef0; --shadow:rgba(120,40,60,.14);
+  --display:"Playfair Display",Georgia,"Times New Roman",serif;
+  --script:"Yellowtail","Brush Script MT",cursive;
+  --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#1f181b; --panel:#2a2125; --blush:#3a2830; --pink:#ef7f9c; --pink-deep:#f59ab1; --on-pink:#2a1218;
+  --ink:#f7e9ed; --muted:#c3a6ae; --line:#46343b; --dot:#33262b; --chip:#35292e; --shadow:rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#1f181b; --panel:#2a2125; --blush:#3a2830; --pink:#ef7f9c; --pink-deep:#f59ab1; --on-pink:#2a1218;
+  --ink:#f7e9ed; --muted:#c3a6ae; --line:#46343b; --dot:#33262b; --chip:#35292e; --shadow:rgba(0,0,0,.4); color-scheme:dark}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);overflow:hidden;-webkit-user-select:none;user-select:none}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--pink)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+button:focus-visible,input:focus-visible,label.btn:focus-visible{outline:2px solid var(--pink-deep);outline-offset:2px}
+.app{height:100%;display:flex;flex-direction:column}
+
+/* header band */
+.top{background:var(--pink);color:var(--on-pink);display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;
+  padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:baseline;gap:6px;margin-right:auto;line-height:1}
+.brand b{font-family:var(--display);font-weight:700;font-size:24px;letter-spacing:.01em}
+.brand i{font-family:var(--script);font-style:normal;font-size:20px;opacity:.92}
+.seg{display:inline-flex;background:rgba(255,255,255,.22);border-radius:99px;padding:3px}
+.seg button{height:30px;padding:0 12px;border-radius:99px;font-size:13px;font-weight:500}
+.seg button.on{background:var(--on-pink);color:var(--pink-deep)}
+.hbtn{height:34px;padding:0 12px;border-radius:99px;font-size:13px;font-weight:500;border:1.5px solid rgba(255,255,255,.7);white-space:nowrap}
+.hbtn.on{background:var(--on-pink);color:var(--pink-deep);border-color:var(--on-pink)}
+.hbtn.solid{background:var(--on-pink);color:var(--pink-deep);border-color:var(--on-pink);font-weight:700}
+.hgroup{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+/* stage */
+.main{flex:1;min-height:0;position:relative;display:flex}
+.stage{flex:1;min-width:0;position:relative;overflow:auto;background-color:var(--paper);
+  background-image:radial-gradient(var(--dot) 1.4px,transparent 1.5px);background-size:16px 16px}
+.stage-inner{min-width:100%;min-height:100%;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box}
+.sheet{position:relative;flex:none;background:#fff;box-shadow:0 1px 2px var(--shadow),0 10px 30px var(--shadow);border-radius:3px;touch-action:none}
+.sheet canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.sizeTag{position:absolute;left:max(12px,env(safe-area-inset-left,0px));top:12px;z-index:2;font-size:12px;color:var(--muted);background:var(--panel);
+  border:1px solid var(--line);border-radius:99px;padding:5px 11px}
+.sizeTag b{font-family:var(--display);font-style:italic;color:var(--ink);font-weight:600}
+.zoom{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:12px;display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px;z-index:2}
+.zoom button{width:32px;height:30px;border-radius:99px;font-size:18px}
+.zoom span{font-size:12px;color:var(--muted);align-self:center;min-width:40px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* designs drawer */
+.drawer{position:relative;flex:none;width:236px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;
+  padding-right:env(safe-area-inset-right,0px);transition:margin-right .25s ease}
+.drawer.closed{margin-right:calc(-236px - env(safe-area-inset-right,0px))}
+.drawer .tab{position:absolute;left:-30px;top:14px;width:30px;height:40px;background:var(--panel);border:1px solid var(--line);border-right:0;border-radius:8px 0 0 8px;
+  display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.drawer .tab svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;transition:transform .25s}
+.drawer.closed .tab svg{transform:rotate(180deg)}
+.dhead{padding:14px 14px 8px;display:flex;flex-direction:column;gap:10px}
+.dhead h2{margin:0;font-family:var(--display);font-size:20px;font-weight:600}
+.search{height:34px;border-radius:99px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:inherit;font-size:13px;padding:0 14px;width:100%;box-sizing:border-box}
+.dbody{overflow:auto;padding:4px 14px 16px;display:flex;flex-direction:column;gap:14px}
+.cat h3{margin:0 0 8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.card{width:100%;display:flex;flex-direction:column;align-items:stretch;gap:6px;border:1.5px solid var(--line);border-radius:12px;padding:8px;background:var(--paper);text-align:left}
+.card img{width:100%;aspect-ratio:4/3;object-fit:contain;background:#fff;border-radius:8px;max-width:100%}
+.card .nm{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.card .nm b{font-family:var(--display);font-weight:600;font-size:15px}
+.card .nm span{font-size:11px;color:var(--muted)}
+.card.on{border-color:var(--pink);box-shadow:inset 0 0 0 1px var(--pink)}
+.card.on .nm span{color:var(--pink-deep);font-weight:700}
+.empty{font-size:13px;color:var(--muted)}
+
+/* bottom dock */
+.dock{background:var(--panel);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px;
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.sq{width:52px;height:46px;border-radius:12px;border:1.5px dashed var(--muted);display:inline-flex;align-items:center;justify-content:center;color:var(--ink);position:relative}
+.sq svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sq:disabled{opacity:.35;cursor:default}
+.sq input{display:none}
+.frame{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.frame input{width:52px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:inherit;font-size:13px;text-align:center}
+.spacer{flex:1}
+.label{flex:none;white-space:nowrap;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;min-width:34px}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+.tool{height:40px;padding:0 12px 0 8px;border-radius:99px;background:var(--chip);display:inline-flex;align-items:center;gap:6px;font-size:14px}
+.tool canvas,.tool img{width:34px;height:20px;border-radius:5px;background:#fff}
+.tool.on{background:var(--pink);color:var(--on-pink)}
+.sw{width:28px;height:28px;border-radius:50%;border:1px solid rgba(0,0,0,.18);box-shadow:inset 0 0 0 2px var(--panel)}
+.sw.on{outline:2.5px solid var(--pink);outline-offset:1px}
+input[type=color]{width:32px;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:2px}
+input[type=range]{width:150px;accent-color:var(--pink)}
+.val{font-size:12px;min-width:24px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mats{display:flex;gap:6px;flex-wrap:wrap}
+.mat{height:34px;padding:0 10px 0 4px;border-radius:99px;background:var(--chip);font-size:13px;display:inline-flex;align-items:center;gap:6px;position:relative}
+.mat i{width:26px;height:26px;border-radius:50%;display:inline-block;background-size:cover;background-position:center;border:1px solid rgba(0,0,0,.15)}
+.mat.on{background:var(--ink);color:var(--panel)}
+.mat .x{position:absolute;right:-4px;top:-4px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--panel);font-size:12px;line-height:18px;text-align:center;display:none}
+.mat.on .x{display:block}
+.field{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:var(--panel);
+  padding:10px 16px;border-radius:12px;font-size:14px;max-width:calc(100% - 32px);box-shadow:0 6px 20px var(--shadow)}
+.modal{position:fixed;inset:0;background:rgba(30,10,18,.55);display:flex;align-items:center;justify-content:center;z-index:20;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mcard{background:var(--panel);border-radius:16px;padding:16px;max-width:520px;width:100%;max-height:90%;display:flex;flex-direction:column;gap:12px}
+.mcard h2{margin:0;font-family:var(--display);font-size:20px;font-weight:600}
+.mcard img{max-height:58vh;object-fit:contain;background:#fff;border-radius:8px;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+.mcard p{margin:0;font-size:13px;color:var(--muted);line-height:1.6}
+.mrow{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.pill{height:38px;padding:0 16px;border-radius:99px;background:var(--chip);font-size:14px}
+.pill.primary{background:var(--pink);color:var(--on-pink);font-weight:700}
+
+@media (max-width:760px){
+  .drawer{position:absolute;right:0;top:0;bottom:0;z-index:5;box-shadow:-8px 0 24px var(--shadow)}
+  .drawer.closed{box-shadow:none}
+  input[type=range]{width:110px}
+  .brand i{display:none}
+  .dock{gap:6px;padding-block:8px}
+  .row{flex-wrap:nowrap;min-width:0}
+  .row>.field,.row>.tools,.row>.mats{min-width:0}
+  .tools,.mats{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-block:2px}
+  .tool,.mat,.sw{flex:none}
+  .field{flex-wrap:nowrap;flex:1}
+  #fSize{flex:none}
+  .label{min-width:0}
+  .sq{width:44px;height:40px}
+  .frame label{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand"><b>Paperdoll</b><i>atelier</i></div>
+    <div class="seg" role="group" aria-label="人台尺寸">
+      <button id="szRegular" data-size="regular">Regular</button>
+      <button id="szCurvier" data-size="curvier">Curvier</button>
+    </div>
+    <div class="hgroup">
+      <button class="hbtn on" id="mirror" title="左右對稱繪製">對稱</button>
+      <button class="hbtn" id="penonly" title="只讓 S Pen 畫圖，手指拖曳畫面">只用筆</button>
+      <button class="hbtn" id="clear">清除</button>
+      <button class="hbtn solid" id="export">匯出 PNG</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <main class="stage" id="stage">
+      <div class="sizeTag" id="sizeTag"></div>
+      <div class="stage-inner">
+        <div class="sheet" id="sheet">
+          <canvas id="cDraw"></canvas>
+          <canvas id="cLine"></canvas>
+          <canvas id="cOver"></canvas>
+        </div>
+      </div>
+      <div class="zoom"><button id="zout" aria-label="縮小">−</button><span id="zval">100%</span><button id="zin" aria-label="放大">+</button></div>
+    </main>
+
+    <aside class="drawer" id="drawer" aria-label="款式">
+      <button class="tab" id="drawerTab" aria-label="收合款式欄"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      <div class="dhead">
+        <h2>Designs</h2>
+        <input class="search" id="search" type="search" placeholder="搜尋款式，例如 bodice" aria-label="搜尋款式">
+      </div>
+      <div class="dbody" id="designs"></div>
+    </aside>
+  </div>
+
+  <section class="dock">
+    <div class="row">
+      <label class="sq" id="camBtn" title="拍照做色卡" tabindex="0">
+        <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>
+        <input type="file" id="camFile" accept="image/*" capture="environment">
+      </label>
+      <label class="sq" id="albumBtn" title="從相簿做色卡" tabindex="0">
+        <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1.5"/><path d="M4 16l5-5 4 4 2-2 5 5"/><circle cx="15.5" cy="9.5" r="1.4"/></svg>
+        <input type="file" id="albumFile" accept="image/*">
+      </label>
+      <button class="sq" id="undo" title="復原" aria-label="復原" disabled><svg viewBox="0 0 24 24"><path d="M9 7H5V3"/><path d="M5.6 7.2A8 8 0 1 1 4 12"/></svg></button>
+      <button class="sq" id="redo" title="重做" aria-label="重做" disabled><svg viewBox="0 0 24 24"><path d="M15 7h4V3"/><path d="M18.4 7.2A8 8 0 1 0 20 12"/></svg></button>
+      <div class="frame"><label for="frameCm">色卡框</label><input id="frameCm" type="number" min="2" max="100" value="30"><span>cm</span></div>
+    </div>
+    <div class="row">
+      <span class="label">Tools</span>
+      <div class="tools" id="tools"></div>
+    </div>
+    <div class="row">
+      <div class="field" id="fColor"><span class="label">顏色</span><div class="mats" id="swatches"></div><input type="color" id="custom" value="#e8698a" aria-label="自訂顏色"></div>
+      <div class="field" id="fSize"><span class="label">粗細</span><input type="range" id="size" min="1" max="80"><span class="val" id="sizeVal"></span></div>
+    </div>
+    <div class="row" id="fMat">
+      <span class="label">色卡</span>
+      <div class="mats" id="mats"></div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="modal" id="modal" hidden>
+  <div class="mcard">
+    <h2>匯出 PNG</h2>
+    <img id="outImg" alt="匯出的紙娃娃款式圖">
+    <p id="saveHint">長按圖片，選「下載圖片」或「儲存圖片」也可以存到相簿。</p>
+    <div class="mrow">
+      <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="incBody" checked> 包含人台線條</label>
+      <div style="display:flex;gap:8px">
+        <button class="pill" id="closeModal">關閉</button>
+        <button class="pill primary" id="savePng" hidden>儲存 PNG</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*SWATCHKIT*/
+</script>
+<script>
+/*CROQUIS*/
+(()=>{
+const VB=726.93,VBH=938.64,W=1000,H=Math.round(W*VBH/VB),K=W/VB,CX=W/2;
+const PX_PER_CM=7.2;                      /* croquis ≈168 cm tall on a 1000 px wide sheet */
+const $=id=>document.getElementById(id);
+const cv={draw:$('cDraw'),line:$('cLine'),over:$('cOver')};
+for(const k in cv){cv[k].width=W;cv[k].height=H;}
+const d=cv.draw.getContext('2d',{willReadFrequently:true}),L=cv.line.getContext('2d'),o=cv.over.getContext('2d');
+const gl=document.createElement('canvas');gl.width=W;gl.height=H;const gx=gl.getContext('2d');   /* garment lines only, for export */
+const bnd=document.createElement('canvas');bnd.width=W;bnd.height=H;const bx=bnd.getContext('2d',{willReadFrequently:true});
+
+const TOOLS=[['ink','代針筆'],['water','水彩'],['fill','填色'],['erase','橡皮擦'],['ruffle','荷葉邊'],['ricrac','水兵帶']];
+const COLORS=['#2b2326','#ffffff','#f6d9df','#e8698a','#b23a55','#f3e3c8','#c8a27a','#7a8f6a','#5f7fa6','#24324f'];
+const MATS=[['solid','純色'],['denim','牛仔'],['knit','針織'],['tweed','毛呢'],['plaid','格紋']];
+const DESIGNS=[
+  {id:'bodice',cat:'Bodice 上衣',name:'Lisa Bodice',zh:'V 領短袖上衣',tags:'lisa bodice 上衣 v領 短袖 top'},
+  {id:'skirt',cat:'Skirt 裙子',name:'Circle Skirt',zh:'圓裙',tags:'circle skirt 圓裙 裙 skirt'}];
+const S={tool:'ink',color:'#e8698a',mat:'solid',photo:null,mirror:true,penOnly:false,size:'regular',zoom:1,
+  pieces:{bodice:true,skirt:true},sizes:{ink:4,water:30,fill:0,erase:28,ruffle:24,ricrac:10}};
+
+/* ---------- color helpers ---------- */
+const rgb=h=>{h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255]};
+const lum=c=>{const[r,g,b]=rgb(c);return(0.299*r+0.587*g+0.114*b)/255};
+const mix=(c,amt)=>{const[r,g,b]=rgb(c);const f=v=>Math.round(amt>0?v+(255-v)*amt:v*(1+amt));return`rgb(${f(r)},${f(g)},${f(b)})`};
+const rgba=(c,a)=>{const[r,g,b]=rgb(c);return`rgba(${r},${g},${b},${a})`};
+const blendFor=c=>lum(c)>0.8?'source-over':'multiply';
+
+/* ---------- croquis rendering ---------- */
+const svgImg=(inner,css)=>new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;
+  im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB} ${VBH}" width="${W}" height="${H}"><style>${css}</style>${inner}</svg>`);});
+const silOf=ds=>ds.map(p=>`<path d="${p}"/>`).join('');
+let composeId=0;
+async function compose(){
+  const id=++composeId,C=CROQUIS[S.size],on=Object.keys(S.pieces).filter(k=>S.pieces[k]);
+  const lines=on.map(k=>C.pieces[k].lines).join(''),sil=on.map(k=>silOf(C.pieces[k].sil)).join('');
+  const nofill=C.css+'*{fill:none!important}',thick=nofill+'*{stroke-width:2.1px!important;stroke:#000!important}',solid='*{fill:#000;stroke:#000;stroke-width:1px}';
+  const [b,l,s,bt,lt]=await Promise.all([svgImg(C.body,nofill),svgImg(lines,nofill),svgImg(sil,solid),svgImg(C.body,thick),svgImg(lines,thick)]);
+  if(id!==composeId)return;
+  const lay=(x,body,ln)=>{x.clearRect(0,0,W,H);x.globalCompositeOperation='source-over';x.drawImage(body,0,0);
+    if(on.length){x.globalCompositeOperation='destination-out';x.drawImage(s,0,0);x.globalCompositeOperation='source-over';x.drawImage(ln,0,0);}};
+  lay(L,b,l);lay(bx,bt,lt);
+  gx.clearRect(0,0,W,H);if(on.length)gx.drawImage(l,0,0);
+  bndData=null;
+}
+let bndData=null;
+const boundary=()=>bndData||(bndData=bx.getImageData(0,0,W,H).data);
+
+/* ---------- brush dabs (from Atelier) ---------- */
+function dabWater(x,px,py,r,color){const rr=r*(.8+Math.random()*.35),gr=x.createRadialGradient(px,py,rr*.2,px,py,rr);
+  gr.addColorStop(0,rgba(color,.5));gr.addColorStop(.7,rgba(color,.35));gr.addColorStop(1,rgba(color,0));x.fillStyle=gr;x.beginPath();x.arc(px,py,rr,0,7);x.fill();}
+function dabRuffle(x,px,py,r,color,ang,n){x.save();x.translate(px,py);x.rotate(ang);x.strokeStyle=color;x.lineWidth=Math.max(.8,r*.07);x.lineCap='round';
+  const len=r*(.75+.25*Math.sin(n*1.7));x.globalAlpha=.85;
+  x.beginPath();x.moveTo(-r*.3,-r*.2);x.lineTo(r*.3,-r*.2);x.moveTo(0,-r*.2);x.lineTo(0,len);x.stroke();
+  x.globalAlpha=1;x.beginPath();x.arc(0,len,r*.3,0,Math.PI);x.stroke();x.restore();}
+const SPACING={water:.18,ruffle:.55};
+const BUF={water:.42};
+
+/* ---------- swatches (materials + photos) ---------- */
+const patCache={};
+function tile(mat,color){
+  const s=96,c=document.createElement('canvas');c.width=c.height=s;const x=c.getContext('2d');
+  const Lm=lum(color),hi=mix(color,Lm>0.7?-0.12:0.28),lo=mix(color,-0.35);
+  x.fillStyle=color;x.fillRect(0,0,s,s);
+  const wrap=fn=>{for(const ox of[-s,0,s])for(const oy of[-s,0,s]){x.save();x.translate(ox,oy);fn();x.restore();}};
+  if(mat==='denim'){x.lineWidth=1.6;
+    for(let i=-s;i<s*2;i+=4){x.globalAlpha=.32;x.strokeStyle=hi;x.beginPath();x.moveTo(i,0);x.lineTo(i-s,s);x.stroke();}
+    for(let i=0;i<180;i++){x.globalAlpha=.25+Math.random()*.3;x.fillStyle=Math.random()<.5?'#fff':lo;x.fillRect(Math.random()*s,Math.random()*s,1.5,1);}
+  }else if(mat==='knit'){x.lineWidth=2.2;x.lineCap='round';
+    for(let col=0;col<s;col+=12)for(let row=-10;row<s+10;row+=10){
+      x.globalAlpha=.45;x.strokeStyle=lo;x.beginPath();x.moveTo(col+1,row);x.lineTo(col+6,row+7);x.lineTo(col+11,row);x.stroke();
+      x.globalAlpha=.35;x.strokeStyle=hi;x.beginPath();x.moveTo(col+2,row-1.5);x.lineTo(col+6,row+4.5);x.stroke();}
+  }else if(mat==='tweed'){const cs=[hi,lo,'#f3eee4',mix(color,0.5)];
+    for(let i=0;i<620;i++){const px=Math.random()*s,py=Math.random()*s,a=Math.random()*Math.PI,l=2+Math.random()*5;
+      wrap(()=>{x.globalAlpha=.55;x.strokeStyle=cs[i%4];x.lineWidth=1.2;x.beginPath();x.moveTo(px,py);x.lineTo(px+Math.cos(a)*l,py+Math.sin(a)*l);x.stroke();});}
+  }else if(mat==='plaid'){
+    x.globalAlpha=.35;x.fillStyle=lo;x.fillRect(0,10,s,16);x.fillRect(10,0,16,s);x.fillRect(0,58,s,10);x.fillRect(58,0,10,s);
+    x.globalAlpha=.6;x.fillStyle=hi;x.fillRect(0,40,s,2);x.fillRect(40,0,2,s);x.fillRect(0,84,s,1.5);x.fillRect(84,0,1.5,s);
+  }
+  x.globalAlpha=1;return c;
+}
+let photos=[];                                  /* {id,url,sizeCm,img} */
+function photoTile(p){const px=Math.max(16,Math.round(p.sizeCm*PX_PER_CM)),c=document.createElement('canvas');c.width=c.height=px;
+  c.getContext('2d').drawImage(p.img,0,0,px,px);return c;}
+function paint(){
+  if(S.photo){const p=photos.find(q=>q.id===S.photo);if(p&&p.img){const k='photo'+p.id;if(!patCache[k])patCache[k]=d.createPattern(photoTile(p),'repeat');return patCache[k];}}
+  if(S.mat==='solid')return S.color;
+  const k=S.mat+S.color;if(!patCache[k])patCache[k]=d.createPattern(tile(S.mat,S.color),'repeat');return patCache[k];
+}
+
+/* ---------- history ---------- */
+const undoS=[],redoS=[];
+function snap(){undoS.push(d.getImageData(0,0,W,H));if(undoS.length>15)undoS.shift();redoS.length=0;syncHist();}
+function syncHist(){$('undo').disabled=!undoS.length;$('redo').disabled=!redoS.length;}
+function undo(){if(!undoS.length)return;redoS.push(d.getImageData(0,0,W,H));d.putImageData(undoS.pop(),0,0);syncHist();save();}
+function redo(){if(!redoS.length)return;undoS.push(d.getImageData(0,0,W,H));d.putImageData(redoS.pop(),0,0);syncHist();save();}
+
+/* ---------- drawing primitives ---------- */
+function both(ctx,fn){fn(ctx);if(S.mirror){ctx.save();ctx.setTransform(-1,0,0,1,W,0);fn(ctx);ctx.restore();}}
+function smooth(pts){if(pts.length<3)return pts;const r=[pts[0]];for(let i=1;i<pts.length-1;i++)r.push({x:(pts[i-1].x+pts[i].x*2+pts[i+1].x)/4,y:(pts[i-1].y+pts[i].y*2+pts[i+1].y)/4});r.push(pts[pts.length-1]);return r;}
+function resample(pts,step){
+  const out=[];if(pts.length<2)return out;let acc=0,prev=pts[0];out.push(prev);
+  for(let i=1;i<pts.length;i++){let cur=pts[i];let dx=cur.x-prev.x,dy=cur.y-prev.y,len=Math.hypot(dx,dy);
+    while(acc+len>=step){const k=(step-acc)/len;const p={x:prev.x+dx*k,y:prev.y+dy*k};out.push(p);prev=p;dx=cur.x-prev.x;dy=cur.y-prev.y;len=Math.hypot(dx,dy);acc=0;}
+    acc+=len;prev=cur;}
+  return out.map((p,i)=>{const a=out[Math.max(0,i-1)],b=out[Math.min(out.length-1,i+1)];const l=Math.hypot(b.x-a.x,b.y-a.y)||1;return{x:p.x,y:p.y,tx:(b.x-a.x)/l,ty:(b.y-a.y)/l};});
+}
+/* ric-rac: the zig-zag braid from trims.svg (amplitude 3.8, period 21.2, cord 5.6 at size 10) laid along the stroke */
+function renderRicrac(x,pts,s,color){
+  const R=resample(smooth(smooth(pts)),1.2);if(R.length<2)return;
+  const A=s*.38,P=s*2.12;x.save();x.strokeStyle=color;x.lineWidth=s*.56;x.lineCap='round';x.lineJoin='round';
+  x.beginPath();R.forEach((p,i)=>{const off=A*Math.sin(i*1.2/P*2*Math.PI),X=p.x-p.ty*off,Y=p.y+p.tx*off;i?x.lineTo(X,Y):x.moveTo(X,Y);});x.stroke();
+  x.globalAlpha=.25;x.strokeStyle=lum(color)>0.6?mix(color,-0.5):'#fff';x.lineWidth=Math.max(.6,s*.08);x.stroke();x.restore();
+}
+
+/* ---------- flood fill against the croquis lines ---------- */
+function doFill(sx,sy){
+  const D=d.getImageData(0,0,W,H),dd=D.data,td=boundary(),mask=new Uint8Array(W*H);
+  let anyOpaque=false;
+  const flood=(x0,y0)=>{
+    x0|=0;y0|=0;if(x0<0||y0<0||x0>=W||y0>=H)return;const i0=y0*W+x0;if(mask[i0]||td[i0*4+3]>90)return;
+    const sr=dd[i0*4],sg=dd[i0*4+1],sb=dd[i0*4+2],sa=dd[i0*4+3];if(sa>=40)anyOpaque=true;
+    const ok=i=>{if(mask[i]||td[i*4+3]>90)return false;const j=i*4;
+      if(sa<40)return dd[j+3]<40;return Math.abs(dd[j]-sr)<60&&Math.abs(dd[j+1]-sg)<60&&Math.abs(dd[j+2]-sb)<60&&Math.abs(dd[j+3]-sa)<60;};
+    const st=[x0,y0];
+    while(st.length){let y=st.pop(),x=st.pop();let i=y*W+x;while(x>0&&ok(i-1)){x--;i--;}
+      let up=false,dn=false;
+      while(x<W&&ok(i)){mask[i]=1;
+        if(y>0){if(ok(i-W)){if(!up){st.push(x,y-1);up=true;}}else up=false;}
+        if(y<H-1){if(ok(i+W)){if(!dn){st.push(x,y+1);dn=true;}}else dn=false;}
+        x++;i++;}
+    }
+  };
+  flood(sx,sy);if(S.mirror)flood(W-1-sx,sy);
+  let count=0;for(let i=0;i<mask.length;i++)count+=mask[i];
+  if(count>W*H*.6){return false;}               /* clicked outside every outline: don't paint the whole sheet */
+  for(let pass=0;pass<2;pass++){const m2=mask.slice();for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;if(!mask[i]&&(mask[i-1]||mask[i+1]||mask[i-W]||mask[i+W]))m2[i]=1;}mask.set(m2);}
+  const mc=document.createElement('canvas');mc.width=W;mc.height=H;const mx=mc.getContext('2d'),MI=mx.createImageData(W,H);
+  for(let i=0;i<mask.length;i++)if(mask[i])MI.data[i*4+3]=255;mx.putImageData(MI,0,0);
+  const tc=document.createElement('canvas');tc.width=W;tc.height=H;const tx=tc.getContext('2d');
+  tx.fillStyle=paint();tx.fillRect(0,0,W,H);tx.globalCompositeOperation='destination-in';tx.drawImage(mc,0,0);
+  d.save();d.globalCompositeOperation=anyOpaque?'source-over':'destination-over';d.drawImage(tc,0,0);d.restore();
+  return true;
+}
+
+/* ---------- pointer input ---------- */
+const sheet=$('sheet'),stage=$('stage');
+let act=null;
+const pos=e=>{const r=cv.over.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height,p:e.pressure||.5};};
+function strokeSeg(a,c,b,w){
+  both(d,x=>{x.save();x.lineCap='round';x.lineJoin='round';x.lineWidth=w;
+    if(S.tool==='erase'){x.globalCompositeOperation='destination-out';x.strokeStyle='#000';}else x.strokeStyle=S.color;
+    x.beginPath();x.moveTo(a.x,a.y);x.quadraticCurveTo(c.x,c.y,b.x,b.y);x.stroke();x.restore();});
+}
+const widthFor=p=>{const s=S.sizes[S.tool];return S.tool==='ink'?s*(.3+.9*p):S.tool==='water'?s*(.6+.6*p):s;};
+const isDab=()=>S.tool==='water'||S.tool==='ruffle';
+const buf=document.createElement('canvas');buf.width=W;buf.height=H;const bfx=buf.getContext('2d');
+function dabSeg(a,c,b,p0,p1){
+  const id=S.tool,target=BUF[id]?bfx:d;let last=a;
+  const steps=Math.max(1,Math.ceil(Math.hypot(c.x-a.x,c.y-a.y)+Math.hypot(b.x-c.x,b.y-c.y)));
+  for(let i=1;i<=steps;i++){const t=i/steps,u=1-t;
+    const pt={x:u*u*a.x+2*u*t*c.x+t*t*b.x,y:u*u*a.y+2*u*t*c.y+t*t*b.y},pp=p0+(p1-p0)*t;
+    const dl=Math.hypot(pt.x-last.x,pt.y-last.y);
+    if(dl>.01){const na=Math.atan2(pt.y-last.y,pt.x-last.x);act.ang=act.ang==null?na:act.ang+Math.atan2(Math.sin(na-act.ang),Math.cos(na-act.ang))*.3;}
+    act.acc+=dl;last=pt;
+    const r=widthFor(pp)/2,ang=act.ang||0,n=act.n++;
+    if(act.acc>=Math.max(1,r*SPACING[id])){act.acc=0;both(target,x=>id==='water'?dabWater(x,pt.x,pt.y,r,S.color):dabRuffle(x,pt.x,pt.y,r,S.color,ang,n));}
+  }
+}
+function showBuf(){o.clearRect(0,0,W,H);o.drawImage(buf,0,0);}
+function startBuf(){bfx.clearRect(0,0,W,H);cv.over.style.opacity=BUF[S.tool];cv.over.style.mixBlendMode=blendFor(S.color);}
+function commitBuf(){d.save();d.globalAlpha=BUF[S.tool];d.globalCompositeOperation=blendFor(S.color);d.drawImage(buf,0,0);d.restore();
+  bfx.clearRect(0,0,W,H);o.clearRect(0,0,W,H);cv.over.style.opacity='';cv.over.style.mixBlendMode='';}
+sheet.addEventListener('pointerdown',e=>{
+  if(act)return;
+  if(S.penOnly&&e.pointerType==='touch'){act={pan:true,id:e.pointerId,x:e.clientX,y:e.clientY,sl:stage.scrollLeft,st:stage.scrollTop};return;}
+  e.preventDefault();sheet.setPointerCapture(e.pointerId);
+  const p=pos(e);hideSample();
+  if(S.tool==='fill'){snap();if(doFill(p.x,p.y))save();else{undoS.pop();syncHist();toast('請點在輪廓線圍起來的區域內');}return;}
+  snap();act={id:e.pointerId,pts:[p],mid:p,acc:1e9,lp:p.p,ang:null,n:0};
+  if(isDab()){if(BUF[S.tool]){startBuf();dabSeg(p,p,p,p.p,p.p);showBuf();}}
+  else if(S.tool==='ink'||S.tool==='erase')strokeSeg(p,p,{x:p.x+.01,y:p.y},widthFor(p.p));
+});
+sheet.addEventListener('pointermove',e=>{
+  if(!act||e.pointerId!==act.id)return;
+  if(act.pan){stage.scrollLeft=act.sl-(e.clientX-act.x);stage.scrollTop=act.st-(e.clientY-act.y);return;}
+  const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+  for(const ev of (evs.length?evs:[e])){
+    const p=pos(ev),prev=act.pts[act.pts.length-1];if(Math.hypot(p.x-prev.x,p.y-prev.y)<1)continue;
+    act.pts.push(p);
+    if(S.tool==='ricrac')continue;
+    const mid={x:(prev.x+p.x)/2,y:(prev.y+p.y)/2};
+    if(isDab())dabSeg(act.mid,prev,mid,act.lp,p.p);else strokeSeg(act.mid,prev,mid,widthFor(p.p));
+    act.mid=mid;act.lp=p.p;
+  }
+  if(BUF[S.tool])showBuf();
+  if(S.tool==='ricrac'){o.clearRect(0,0,W,H);both(o,x=>renderRicrac(x,act.pts,S.sizes.ricrac,S.color));}
+});
+const end=e=>{
+  if(!act||e.pointerId!==act.id)return;
+  if(!act.pan){
+    if(S.tool==='ricrac'){o.clearRect(0,0,W,H);
+      if(act.pts.length>2)both(d,x=>renderRicrac(x,act.pts,S.sizes.ricrac,S.color));else{undoS.pop();syncHist();}}
+    if(BUF[S.tool])commitBuf();
+    save();
+  }
+  act=null;
+};
+sheet.addEventListener('pointerup',end);sheet.addEventListener('pointercancel',end);
+
+/* ---------- photo swatches (Swatch Kit) ---------- */
+function loadImg(src){return new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;im.src=src;});}
+async function addPhotoFromFile(file){
+  const cm=Math.min(100,Math.max(2,+$('frameCm').value||30));
+  let sw=null;
+  try{sw=await SwatchKit.capture({source:file,sizeCm:cm,size:480,quality:.82});}catch(e){toast('這張照片讀不出來，請換一張');return;}
+  if(!sw)return;
+  const p={id:Date.now().toString(36),url:sw.url,sizeCm:sw.sizeCm,img:await loadImg(sw.url)};
+  photos.unshift(p);if(photos.length>8)photos.length=8;
+  S.photo=p.id;S.tool='fill';savePhotos();buildMats();sync();
+  toast(`已加入 ${p.sizeCm} cm 色卡，點衣服就能填上`);
+}
+function savePhotos(){try{localStorage.setItem('paperdoll-photos',JSON.stringify(photos.map(({id,url,sizeCm})=>({id,url,sizeCm}))));}catch(e){
+  try{localStorage.setItem('paperdoll-photos',JSON.stringify(photos.slice(0,3).map(({id,url,sizeCm})=>({id,url,sizeCm}))));}catch(_){}}}
+for(const id of['camFile','albumFile'])$(id).onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)addPhotoFromFile(f);};
+for(const [b,i] of[['camBtn','camFile'],['albumBtn','albumFile']])$(b).onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$(i).click();}};
+
+/* ---------- UI ---------- */
+function toolPreview(id){
+  const c=document.createElement('canvas');c.width=68;c.height=40;const x=c.getContext('2d'),col='#5a3a44';
+  const pts=[];for(let i=0;i<=34;i++){const t=i/34;pts.push({x:6+t*56,y:20+Math.sin(t*6.28)*7});}
+  x.lineCap='round';x.strokeStyle=col;x.fillStyle=col;
+  if(id==='ink'){x.lineWidth=2.6;x.beginPath();pts.forEach((p,i)=>i?x.lineTo(p.x,p.y):x.moveTo(p.x,p.y));x.stroke();}
+  else if(id==='water'){pts.forEach((p,i)=>{if(i%2)return;const g=x.createRadialGradient(p.x,p.y,1,p.x,p.y,9);g.addColorStop(0,'rgba(232,105,138,.35)');g.addColorStop(1,'rgba(232,105,138,0)');x.fillStyle=g;x.beginPath();x.arc(p.x,p.y,9,0,7);x.fill();});}
+  else if(id==='fill'){x.fillStyle='#e8698a';x.beginPath();x.moveTo(14,32);x.lineTo(26,8);x.lineTo(54,10);x.lineTo(46,32);x.closePath();x.fill();x.strokeStyle=col;x.lineWidth=1.4;x.stroke();}
+  else if(id==='erase'){x.strokeStyle='#d9c6cb';x.lineWidth=12;x.beginPath();x.moveTo(10,28);x.lineTo(58,12);x.stroke();}
+  else if(id==='ruffle'){let n=0;for(let i=0;i<56;i+=7)dabRuffle(x,8+i,10,13,col,0,n++);}
+  else if(id==='ricrac'){renderRicrac(x,[{x:4,y:20},{x:34,y:20},{x:64,y:20}],7,col);}
+  return c.toDataURL();
+}
+function buildMats(){
+  const chips=MATS.map(([k,n])=>`<button class="mat" data-m="${k}"><i style="${k==='solid'?'background:'+S.color:'background-image:url('+tile(k,'#8a7c86').toDataURL()+')'}"></i>${n}</button>`);
+  photos.forEach((p,i)=>chips.push(`<button class="mat" data-p="${p.id}" aria-label="照片色卡 ${i+1}"><i style="background-image:url(${p.url})"></i>${p.sizeCm} cm<span class="x" data-del="${p.id}" aria-label="刪除這張色卡">×</span></button>`));
+  $('mats').innerHTML=chips.join('');syncOn();
+}
+function buildDesigns(){
+  const q=$('search').value.trim().toLowerCase();
+  const list=DESIGNS.filter(g=>!q||(g.name+' '+g.zh+' '+g.tags).toLowerCase().includes(q));
+  if(!list.length){$('designs').innerHTML=`<p class="empty">找不到「${q.replace(/[<>&"]/g,'')}」，試試 bodice 或 skirt。</p>`;return;}
+  const C=CROQUIS[S.size],cats=[...new Set(list.map(g=>g.cat))];
+  $('designs').innerHTML=cats.map(cat=>`<div class="cat"><h3>${cat}</h3>${list.filter(g=>g.cat===cat).map(g=>{
+    const P=C.pieces[g.id],b=P.box,src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${b.join(' ')}"><style>${C.css}*{fill:none!important}</style>${P.lines}</svg>`);
+    return `<button class="card${S.pieces[g.id]?' on':''}" data-d="${g.id}" aria-pressed="${S.pieces[g.id]}"><img src="${src}" alt="${g.name} 線稿"><span class="nm"><b>${g.name}</b><span>${S.pieces[g.id]?'穿上':'未穿'}</span></span><span style="font-size:12px;color:var(--muted)">${g.zh}</span></button>`;}).join('')}</div>`).join('');
+}
+function buildUI(){
+  $('tools').innerHTML=TOOLS.map(([k,n])=>`<button class="tool" data-t="${k}"><img src="${toolPreview(k)}" alt="">${n}</button>`).join('');
+  $('swatches').innerHTML=COLORS.map(c=>`<button class="sw" data-c="${c}" style="background:${c}" aria-label="顏色 ${c}"></button>`).join('');
+  $('tools').onclick=e=>{const b=e.target.closest('[data-t]');if(b){S.tool=b.dataset.t;sync();}};
+  $('swatches').onclick=e=>{const b=e.target.closest('[data-c]');if(b){S.color=b.dataset.c;$('custom').value=S.color;if(S.tool==='erase')S.tool='ink';sync();}};
+  $('custom').oninput=e=>{S.color=e.target.value;sync();};
+  $('mats').onclick=e=>{
+    const del=e.target.closest('[data-del]');
+    if(del){photos=photos.filter(p=>p.id!==del.dataset.del);if(S.photo===del.dataset.del)S.photo=null;savePhotos();buildMats();sync();return;}
+    const b=e.target.closest('[data-m],[data-p]');if(!b)return;
+    if(b.dataset.p){S.photo=b.dataset.p;}else{S.photo=null;S.mat=b.dataset.m;}
+    S.tool='fill';sync();};
+  $('size').oninput=e=>{S.sizes[S.tool]=+e.target.value;$('sizeVal').textContent=e.target.value;};
+  $('mirror').onclick=()=>{S.mirror=!S.mirror;sync();};
+  $('penonly').onclick=()=>{S.penOnly=!S.penOnly;sync();toast(S.penOnly?'只用筆：S Pen 畫圖，手指拖曳畫面':'手指和筆都可以畫圖');};
+  document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>switchSize(b.dataset.size));
+  $('designs').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;S.pieces[b.dataset.d]=!S.pieces[b.dataset.d];buildDesigns();compose();prefs();};
+  $('search').oninput=buildDesigns;
+  $('drawerTab').onclick=()=>{$('drawer').classList.toggle('closed');$('drawerTab').setAttribute('aria-label',$('drawer').classList.contains('closed')?'展開款式欄':'收合款式欄');setTimeout(layout,260);};
+  $('undo').onclick=undo;$('redo').onclick=redo;
+  let armed=0;$('clear').onclick=()=>{const b=$('clear');
+    if(armed){clearTimeout(armed);armed=0;b.textContent='清除';b.classList.remove('on');snap();d.clearRect(0,0,W,H);hideSample();save();return;}
+    b.textContent='再按一次清除';b.classList.add('on');armed=setTimeout(()=>{armed=0;b.textContent='清除';b.classList.remove('on');},3000);};
+  $('export').onclick=()=>{renderExport();$('modal').hidden=false;};
+  $('incBody').onchange=renderExport;
+  $('closeModal').onclick=()=>{$('modal').hidden=true;};
+  $('savePng').onclick=savePng;
+  $('zin').onclick=()=>setZoom(S.zoom*1.25);$('zout').onclick=()=>setZoom(S.zoom/1.25);
+  addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}});
+}
+function syncOn(){
+  document.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',!S.photo&&b.dataset.m===S.mat));
+  document.querySelectorAll('[data-p]').forEach(b=>b.classList.toggle('on',b.dataset.p===S.photo));
+  const solid=document.querySelector('[data-m=solid] i');if(solid)solid.style.background=S.color;
+}
+function sync(){
+  document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tool));
+  document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('on',b.dataset.c.toLowerCase()===S.color.toLowerCase()));
+  document.querySelectorAll('[data-size]').forEach(b=>b.classList.toggle('on',b.dataset.size===S.size));
+  syncOn();
+  $('mirror').classList.toggle('on',S.mirror);$('penonly').classList.toggle('on',S.penOnly);
+  $('fSize').hidden=S.tool==='fill';$('fColor').hidden=S.tool==='erase';
+  const s=S.sizes[S.tool];$('size').value=s;$('sizeVal').textContent=s;
+  $('sizeTag').innerHTML=`Croquis · <b>${S.size==='regular'?'Regular':'Curvier'}</b>`;
+  sheet.style.cursor=S.tool==='fill'?'cell':'crosshair';
+  prefs();
+}
+
+/* ---------- size switch: each croquis keeps its own drawing ---------- */
+const store=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
+const put=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
+async function switchSize(sz){
+  if(sz===S.size)return;
+  clearTimeout(saveT);put('paperdoll-draw-'+S.size,cv.draw.toDataURL());
+  S.size=sz;undoS.length=0;redoS.length=0;syncHist();d.clearRect(0,0,W,H);
+  buildDesigns();sync();await compose();await loadDrawing();
+}
+async function loadDrawing(){
+  const saved=store('paperdoll-draw-'+S.size);
+  if(saved){try{const im=await loadImg(saved);d.clearRect(0,0,W,H);d.drawImage(im,0,0);}catch(e){}}
+  else sample();
+}
+
+/* ---------- layout & zoom ---------- */
+function layout(){
+  const r=stage.getBoundingClientRect(),aw=r.width-28,ah=r.height-28;
+  const base=Math.max(180,Math.min(aw,ah*W/H));
+  sheet.style.width=base*S.zoom+'px';sheet.style.height=base*S.zoom*H/W+'px';$('zval').textContent=Math.round(S.zoom*100)+'%';
+}
+function setZoom(z){S.zoom=Math.min(4,Math.max(1,z));layout();}
+addEventListener('resize',layout);
+
+/* ---------- export ---------- */
+let exportCanvas=null;
+function renderExport(){
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);x.drawImage(cv.draw,0,0);
+  x.drawImage($('incBody').checked?cv.line:gl,0,0);
+  exportCanvas=c;$('outImg').src=c.toDataURL('image/png');
+}
+let downloads=null;
+async function savePng(){
+  if(!downloads||!exportCanvas)return;
+  exportCanvas.toBlob(async blob=>{
+    try{await downloads.save({filename:`paperdoll-${S.size}.png`,data:blob});toast('已儲存 PNG');}
+    catch(e){if(e&&e.code==='declined')return;if(e&&e.code==='rate_limited'){toast('上一個儲存視窗還開著');return;}
+      $('savePng').hidden=true;toast('這裡不能直接儲存，請長按圖片存到相簿');}
+  },'image/png');
+}
+window.claude?.use?.('downloads').then(ns=>{downloads=ns;$('savePng').hidden=!ns;if(ns)$('saveHint').textContent='按「儲存 PNG」存檔，或長按圖片存到相簿。';}).catch(()=>{});
+
+/* ---------- persistence ---------- */
+let saveT=0;
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>put('paperdoll-draw-'+S.size,cv.draw.toDataURL()),700);}
+function prefs(){put('paperdoll-prefs',JSON.stringify({size:S.size,mirror:S.mirror,penOnly:S.penOnly,pieces:S.pieces,color:S.color}));}
+function toast(msg){const el=$('toast');el.textContent=msg;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,3200);}
+let sampleShown=false;
+function hideSample(){if(sampleShown){sampleShown=false;}}
+function sample(){
+  /* example colourway so the first view shows what the tool does */
+  const keep={c:S.color,m:S.mat,p:S.photo,mi:S.mirror};S.mirror=true;S.photo=null;
+  const seeds=S.size==='regular'?{bodice:[500,445],skirt:[500,700]}:{bodice:[500,395],skirt:[500,670]};
+  if(S.pieces.skirt){S.color='#e8698a';S.mat='plaid';doFill(...seeds.skirt);}
+  if(S.pieces.bodice){S.color='#f3e3c8';S.mat='knit';doFill(...seeds.bodice);}
+  S.color=keep.c;S.mat=keep.m;S.photo=keep.p;S.mirror=keep.mi;sampleShown=true;
+  toast('這是範例配色，按「清除」重新開始');
+}
+
+/* ---------- boot ---------- */
+(async()=>{
+  try{const pr=JSON.parse(store('paperdoll-prefs')||'null');
+    if(pr){S.size=pr.size==='curvier'?'curvier':'regular';S.mirror=pr.mirror!==false;S.penOnly=!!pr.penOnly;if(pr.pieces)Object.assign(S.pieces,pr.pieces);if(pr.color)S.color=pr.color;}}catch(e){}
+  try{const ps=JSON.parse(store('paperdoll-photos')||'[]');for(const p of ps){try{photos.push({...p,img:await loadImg(p.url)});}catch(e){}}}catch(e){}
+  $('custom').value=S.color;
+  if(innerWidth<=760)$('drawer').classList.add('closed');
+  buildUI();buildMats();buildDesigns();sync();layout();
+  await compose();await loadDrawing();
+})();
+})();
+</script>
