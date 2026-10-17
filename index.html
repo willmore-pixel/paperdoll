@@ -117,6 +117,8 @@ input[type=range]{width:150px;accent-color:var(--pink)}
 .mat{height:34px;padding:0 10px 0 4px;border-radius:99px;background:var(--chip);font-size:13px;display:inline-flex;align-items:center;gap:6px;position:relative}
 .mat i{width:26px;height:26px;border-radius:50%;display:inline-block;background-size:cover;background-position:center;border:1px solid rgba(0,0,0,.15)}
 .mat.on{background:var(--ink);color:var(--panel)}
+.chk{display:inline-flex;align-items:center;gap:8px;min-height:34px;font-size:13px;cursor:pointer;user-select:none}
+.chk input{width:20px;height:20px;margin:0;accent-color:var(--pink);cursor:pointer}
 #eraseModes .mat{padding:0 12px}
 .mat .x{position:absolute;right:-4px;top:-4px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--panel);font-size:12px;line-height:18px;text-align:center;display:none}
 .mat.on .x{display:block}
@@ -224,7 +226,7 @@ input[type=range]{width:150px;accent-color:var(--pink)}
       <div class="field" id="fErase" hidden><span class="label">Erase</span><div class="mats" id="eraseModes">
         <button class="mat" data-e="all">Everything</button><button class="mat" data-e="trims">Trims only</button><button class="mat" data-e="paint">Paint only</button></div></div>
       <div class="field" id="fSize"><span class="label">Size</span><input type="range" id="size" min="1" max="80"><span class="val" id="sizeVal"></span><span class="dot" id="sizeDot" aria-hidden="true"><i></i></span></div>
-      <div class="field" id="fInside"><button class="mat" id="inside" aria-pressed="false" title="Keep paint inside the outlined area where the stroke starts">Stay inside lines</button></div>
+      <div class="field" id="fInside"><label class="chk" title="Keep paint inside the outlined area where the stroke starts"><input type="checkbox" id="inside">Stay inside</label></div>
     </div>
     <div class="row" id="fMat">
       <span class="label">Swatches</span>
@@ -837,7 +839,7 @@ function buildUI(){
     const b=sheet.getBoundingClientRect(),st=stage.getBoundingClientRect();
     showRing(Math.min(b.width,Math.max(0,st.left+st.width/2-b.left)),Math.min(b.height,Math.max(0,st.top+st.height/2-b.top)));
     clearTimeout(showRing.t);showRing.t=setTimeout(()=>{if(!act)$('ring').hidden=true;},900);};
-  $('inside').onclick=()=>{S.inside[S.tool]=!S.inside[S.tool];sync();};
+  $('inside').onchange=e=>{S.inside[S.tool]=e.target.checked;sync();};
   $('eraseModes').onclick=e=>{const b=e.target.closest('[data-e]');if(b){S.eraseMode=b.dataset.e;sync();}};
   $('mirror').onclick=()=>{S.mirror=!S.mirror;sync();};
   $('penonly').onclick=()=>{S.penOnly=!S.penOnly;sync();toast(S.penOnly?'Pen only: the S Pen draws, fingers move the page':'Fingers and pen both draw');};
@@ -870,7 +872,7 @@ function sync(){
   syncOn();
   $('mirror').classList.toggle('on',S.mirror);$('penonly').classList.toggle('on',S.penOnly);
   $('fSize').hidden=S.tool==='fill';$('fColor').hidden=S.tool==='erase';$('fErase').hidden=S.tool!=='erase';$('fMat').hidden=S.tool!=='fill';
-  $('fInside').hidden=!(S.tool in S.inside);if(S.tool in S.inside){$('inside').classList.toggle('on',S.inside[S.tool]);$('inside').setAttribute('aria-pressed',S.inside[S.tool]);}
+  $('fInside').hidden=!(S.tool in S.inside);if(S.tool in S.inside){$('inside').checked=S.inside[S.tool];}
   document.querySelectorAll('[data-e]').forEach(b=>b.classList.toggle('on',b.dataset.e===S.eraseMode));
   const s=S.sizes[S.tool];$('size').value=s;$('sizeVal').textContent=s;updateDot();
   $('ring').hidden=true;
@@ -934,7 +936,7 @@ function hideSample(){if(sampleShown){sampleShown=false;}}
 function fillPanels(b){   /* seed every panel inside a box (Zelda's seams run waist to hem) */
   const k=W/VB,td=boundary();let dd=d.getImageData(0,0,W,H).data;
   for(let y=(b[1]+12)*k|0;y<(b[1]+b[3])*k;y+=3)for(let x=b[0]*k|0;x<(b[0]+b[2])*k;x+=3){const i=(y*W+x)*4;
-    if(td[i+3]>90||dd[i+3]>=40||!silHit(x,y))continue;doFill(x,y);dd=d.getImageData(0,0,W,H).data;}
+    if(td[i+3]>90||dd[i+3]>=40||![[0,0],[5,0],[-5,0],[0,5],[0,-5]].every(([u,v])=>silHit(x+u,y+v)))continue;doFill(x,y);dd=d.getImageData(0,0,W,H).data;}
 }
 function sample(){
   /* example colourway so the first view shows what the tool does */
