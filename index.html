@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paperdoll Atelier</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Yellowtail&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: pink pattern-shop band on top; croquis sheet centre with a slide-out Designs drawer; camera/undo row, trim tools and swatch strip below (vintage pattern-envelope feel) */
+:root{
+  --paper:#fffaf8; --panel:#fff; --blush:#fbe7ec; --pink:#e8698a; --pink-deep:#c94d6f; --on-pink:#fff;
+  --ink:#3a2a2f; --muted:#8b6f77; --line:#efd6dd; --dot:#f3dfe4; --chip:#f7eef0; --shadow:rgba(120,40,60,.14);
+  --display:"Playfair Display",Georgia,"Times New Roman",serif;
+  --script:"Yellowtail","Brush Script MT",cursive;
+  --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#1f181b; --panel:#2a2125; --blush:#3a2830; --pink:#ef7f9c; --pink-deep:#f59ab1; --on-pink:#2a1218;
+  --ink:#f7e9ed; --muted:#c3a6ae; --line:#46343b; --dot:#33262b; --chip:#35292e; --shadow:rgba(0,0,0,.4); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#1f181b; --panel:#2a2125; --blush:#3a2830; --pink:#ef7f9c; --pink-deep:#f59ab1; --on-pink:#2a1218;
+  --ink:#f7e9ed; --muted:#c3a6ae; --line:#46343b; --dot:#33262b; --chip:#35292e; --shadow:rgba(0,0,0,.4); color-scheme:dark}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);overflow:hidden;-webkit-user-select:none;user-select:none}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--pink)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+button:focus-visible,input:focus-visible,label.btn:focus-visible{outline:2px solid var(--pink-deep);outline-offset:2px}
+.app{height:100%;display:flex;flex-direction:column}
+
+/* header band */
+.top{background:var(--pink);color:var(--on-pink);display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;
+  padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:baseline;gap:6px;margin-right:auto;line-height:1}
+.brand b{font-family:var(--display);font-weight:700;font-size:24px;letter-spacing:.01em}
+.brand i{font-family:var(--script);font-style:normal;font-size:20px;opacity:.92}
+.seg{display:inline-flex;background:rgba(255,255,255,.22);border-radius:99px;padding:3px}
+.seg button{height:30px;padding:0 12px;border-radius:99px;font-size:13px;font-weight:500}
+.seg button.on{background:var(--on-pink);color:var(--pink-deep)}
+.hbtn{height:34px;padding:0 12px;border-radius:99px;font-size:13px;font-weight:500;border:1.5px solid rgba(255,255,255,.7);white-space:nowrap}
+.hbtn.on{background:var(--on-pink);color:var(--pink-deep);border-color:var(--on-pink)}
+.hbtn.solid{background:var(--on-pink);color:var(--pink-deep);border-color:var(--on-pink);font-weight:700}
+.hgroup{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+/* stage */
+.main{flex:1;min-height:0;position:relative;display:flex}
+.stage{flex:1;min-width:0;position:relative;overflow:auto;background-color:var(--paper);
+  background-image:radial-gradient(var(--dot) 1.4px,transparent 1.5px);background-size:16px 16px}
+.stage-inner{min-width:100%;min-height:100%;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box}
+.sheet{position:relative;flex:none;background:#fff;box-shadow:0 1px 2px var(--shadow),0 10px 30px var(--shadow);border-radius:3px;touch-action:none}
+.sheet canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.sizeTag{position:absolute;left:max(12px,env(safe-area-inset-left,0px));top:12px;z-index:2;font-size:12px;color:var(--muted);background:var(--panel);
+  border:1px solid var(--line);border-radius:99px;padding:5px 11px}
+.sizeTag b{font-family:var(--display);font-style:italic;color:var(--ink);font-weight:600}
+.zoom{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:12px;display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px;z-index:2}
+.zoom button{width:32px;height:30px;border-radius:99px;font-size:18px}
+.zoom span{font-size:12px;color:var(--muted);align-self:center;min-width:40px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* designs drawer */
+.drawer{position:relative;flex:none;width:236px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;
+  padding-right:env(safe-area-inset-right,0px);transition:margin-right .25s ease}
+.drawer.closed{margin-right:calc(-236px - env(safe-area-inset-right,0px))}
+.drawer .tab{position:absolute;left:-30px;top:14px;width:30px;height:40px;background:var(--panel);border:1px solid var(--line);border-right:0;border-radius:8px 0 0 8px;
+  display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.drawer .tab svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;transition:transform .25s}
+.drawer.closed .tab svg{transform:rotate(180deg)}
+.dhead{padding:14px 14px 8px;display:flex;flex-direction:column;gap:10px}
+.dhead h2{margin:0;font-family:var(--display);font-size:20px;font-weight:600}
+.search{height:34px;border-radius:99px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:inherit;font-size:13px;padding:0 14px;width:100%;box-sizing:border-box}
+.dbody{overflow:auto;padding:4px 14px 16px;display:flex;flex-direction:column;gap:14px}
+.cat h3{margin:0 0 8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.card{width:100%;display:flex;flex-direction:column;align-items:stretch;gap:6px;border:1.5px solid var(--line);border-radius:12px;padding:8px;background:var(--paper);text-align:left}
+.card img{width:100%;aspect-ratio:4/3;object-fit:contain;background:#fff;border-radius:8px;max-width:100%}
+.card .nm{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.card .nm b{font-family:var(--display);font-weight:600;font-size:15px}
+.card .nm span{font-size:11px;color:var(--muted)}
+.card.on{border-color:var(--pink);box-shadow:inset 0 0 0 1px var(--pink)}
+.card.on .nm span{color:var(--pink-deep);font-weight:700}
+.empty{font-size:13px;color:var(--muted)}
+
+/* bottom dock */
+.dock{background:var(--panel);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px;
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.sq{width:52px;height:46px;border-radius:12px;border:1.5px dashed var(--muted);display:inline-flex;align-items:center;justify-content:center;color:var(--ink);position:relative}
+.sq svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sq:disabled{opacity:.35;cursor:default}
+.sq input{display:none}
+.tipwrap{position:relative;display:inline-flex}
+.tip{position:absolute;left:-4px;bottom:calc(100% + 12px);z-index:8;display:flex;align-items:center;gap:8px;white-space:nowrap;
+  background:var(--tip-bg);color:var(--on-pink);font-family:var(--display);font-style:italic;font-weight:600;font-size:15px;
+  padding:9px 8px 9px 14px;border-radius:14px;box-shadow:0 6px 18px var(--shadow);animation:tipIn .4s ease both}
+.tip{--tip-bg:color-mix(in srgb,var(--pink) 75%,#fff)}
+.tip::after{content:"";position:absolute;left:24px;top:100%;border:8px solid transparent;border-top-color:var(--tip-bg)}
+.tip button{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.25);font-family:var(--sans);font-style:normal;font-size:15px;line-height:24px}
+@keyframes tipIn{from{transform:translateY(6px);opacity:.4}to{transform:none;opacity:1}}
+.frame{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.frame input{width:52px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:inherit;font-size:13px;text-align:center}
+.spacer{flex:1}
+.label{flex:none;white-space:nowrap;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;min-width:34px}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+.tool{height:40px;padding:0 12px 0 8px;border-radius:99px;background:var(--chip);display:inline-flex;align-items:center;gap:6px;font-size:14px}
+.tool canvas,.tool img{width:34px;height:20px;border-radius:5px;background:#fff}
+.tool.on{background:var(--pink);color:var(--on-pink)}
+.sw{width:28px;height:28px;border-radius:50%;border:1px solid rgba(0,0,0,.18);box-shadow:inset 0 0 0 2px var(--panel)}
+.sw.on{outline:2.5px solid var(--pink);outline-offset:1px}
+input[type=color]{width:32px;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:2px}
+input[type=range]{width:150px;accent-color:var(--pink)}
+.dot{width:44px;height:44px;flex:none;border-radius:10px;background:#fff;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;overflow:hidden}
+.dot i{display:block;border-radius:50%;max-width:40px;max-height:40px;min-width:2px;min-height:2px}
+.dot.erase i{background:none!important;border:1.5px dashed #8b6f77}
+.ring{position:absolute;left:0;top:0;z-index:3;pointer-events:none;border-radius:50%;border:1px solid rgba(40,20,28,.75);box-shadow:0 0 0 1px rgba(255,255,255,.85);transform:translate(-50%,-50%)}
+.val{font-size:12px;min-width:24px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mats{display:flex;gap:6px;flex-wrap:wrap}
+.mat{height:34px;padding:0 10px 0 4px;border-radius:99px;background:var(--chip);font-size:13px;display:inline-flex;align-items:center;gap:6px;position:relative}
+.mat i{width:26px;height:26px;border-radius:50%;display:inline-block;background-size:cover;background-position:center;border:1px solid rgba(0,0,0,.15)}
+.mat.on{background:var(--ink);color:var(--panel)}
+#eraseModes .mat{padding:0 12px}
+.mat .x{position:absolute;right:-4px;top:-4px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--panel);font-size:12px;line-height:18px;text-align:center;display:none}
+.mat.on .x{display:block}
+.field{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:var(--panel);
+  padding:10px 16px;border-radius:12px;font-size:14px;max-width:calc(100% - 32px);box-shadow:0 6px 20px var(--shadow)}
+.modal{position:fixed;inset:0;background:rgba(30,10,18,.55);display:flex;align-items:center;justify-content:center;z-index:20;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mcard{background:var(--panel);border-radius:16px;padding:16px;max-width:520px;width:100%;max-height:90%;display:flex;flex-direction:column;gap:12px}
+.mcard h2{margin:0;font-family:var(--display);font-size:20px;font-weight:600}
+.mcard img{max-height:58vh;object-fit:contain;background:#fff;border-radius:8px;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+.mcard p{margin:0;font-size:13px;color:var(--muted);line-height:1.6}
+.mrow{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.pill{height:38px;padding:0 16px;border-radius:99px;background:var(--chip);font-size:14px}
+.pill.primary{background:var(--pink);color:var(--on-pink);font-weight:700}
+
+@media (max-width:760px){
+  .drawer{position:absolute;right:0;top:0;bottom:0;z-index:5;box-shadow:-8px 0 24px var(--shadow)}
+  .drawer.closed{box-shadow:none}
+  input[type=range]{width:110px}
+  .brand i{display:none}
+  .dock{gap:6px;padding-block:8px}
+  .row{flex-wrap:nowrap;min-width:0}
+  .row>.field,.row>.tools,.row>.mats{min-width:0}
+  .tools,.mats{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-block:2px}
+  .tool,.mat,.sw{flex:none}
+  .field{flex-wrap:nowrap;flex:1}
+  .row.cs{flex-wrap:wrap;row-gap:6px}
+  #fColor{flex:1 1 100%}
+  #fSize{flex:1 1 100%}
+  #fSize input[type=range]{flex:1}
+  .label{min-width:0}
+  .sq{width:44px;height:40px}
+  .frame label{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand"><b>Paperdoll</b><i>atelier</i></div>
+    <div class="seg" role="group" aria-label="Croquis size">
+      <button id="szRegular" data-size="regular">Regular</button>
+      <button id="szCurvier" data-size="curvier">Curvier</button>
+    </div>
+    <div class="hgroup">
+      <button class="hbtn on" id="mirror" title="Draw both sides at once">Mirror</button>
+      <button class="hbtn" id="penonly" title="Only the S Pen draws; fingers move the page">Pen only</button>
+      <button class="hbtn" id="clear">Clear</button>
+      <button class="hbtn solid" id="export">Export PNG</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <main class="stage" id="stage">
+      <div class="sizeTag" id="sizeTag"></div>
+      <div class="stage-inner">
+        <div class="sheet" id="sheet">
+          <canvas id="cDraw"></canvas>
+          <canvas id="cLine"></canvas>
+          <canvas id="cTrim"></canvas>
+          <canvas id="cOver"></canvas>
+          <div class="ring" id="ring" hidden></div>
+        </div>
+      </div>
+      <div class="zoom"><button id="zout" aria-label="Zoom out">−</button><span id="zval">100%</span><button id="zin" aria-label="Zoom in">+</button></div>
+    </main>
+
+    <aside class="drawer" id="drawer" aria-label="Designs">
+      <button class="tab" id="drawerTab" aria-label="Hide designs"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      <div class="dhead">
+        <h2>Designs</h2>
+        <input class="search" id="search" type="search" placeholder="Search designs, e.g. bodice" aria-label="Search designs">
+      </div>
+      <div class="dbody" id="designs"></div>
+    </aside>
+  </div>
+
+  <section class="dock">
+    <div class="row">
+      <span class="tipwrap">
+      <div class="tip" id="swatchTip" role="dialog" aria-label="Tip" hidden>
+        <span>Add your own swatches here</span><button id="tipClose" aria-label="Close tip">×</button>
+      </div>
+      <label class="sq" id="camBtn" title="Photograph fabric for a swatch" aria-label="Photograph fabric for a swatch" tabindex="0">
+        <svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>
+        <input type="file" id="camFile" accept="image/*" capture="environment">
+      </label>
+      </span>
+      <label class="sq" id="albumBtn" title="Make a swatch from a photo" aria-label="Make a swatch from a photo" tabindex="0">
+        <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="1.5"/><path d="M4 16l5-5 4 4 2-2 5 5"/><circle cx="15.5" cy="9.5" r="1.4"/></svg>
+        <input type="file" id="albumFile" accept="image/*">
+      </label>
+      <button class="sq" id="undo" title="Undo" aria-label="Undo" disabled><svg viewBox="0 0 24 24"><path d="M9 7H5V3"/><path d="M5.6 7.2A8 8 0 1 1 4 12"/></svg></button>
+      <button class="sq" id="redo" title="Redo" aria-label="Redo" disabled><svg viewBox="0 0 24 24"><path d="M15 7h4V3"/><path d="M18.4 7.2A8 8 0 1 0 20 12"/></svg></button>
+      <div class="frame"><label for="frameCm">Swatch frame</label><input id="frameCm" type="number" min="2" max="100" value="30"><span>cm</span></div>
+    </div>
+    <div class="row">
+      <span class="label">Tools</span>
+      <div class="tools" id="tools"></div>
+    </div>
+    <div class="row cs">
+      <div class="field" id="fColor"><span class="label">Colour</span><div class="mats" id="swatches"></div><input type="color" id="custom" value="#e8698a" aria-label="Custom colour"></div>
+      <div class="field" id="fErase" hidden><span class="label">Erase</span><div class="mats" id="eraseModes">
+        <button class="mat" data-e="all">Everything</button><button class="mat" data-e="trims">Trims only</button><button class="mat" data-e="paint">Paint only</button></div></div>
+      <div class="field" id="fSize"><span class="label">Size</span><input type="range" id="size" min="1" max="80"><span class="val" id="sizeVal"></span><span class="dot" id="sizeDot" aria-hidden="true"><i></i></span></div>
+      <div class="field" id="fInside"><button class="mat" id="inside" aria-pressed="false" title="Keep paint inside the outlined area where the stroke starts">Stay inside lines</button></div>
+    </div>
+    <div class="row" id="fMat">
+      <span class="label">Swatches</span>
+      <div class="mats" id="mats"></div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="modal" id="modal" hidden>
+  <div class="mcard">
+    <h2>Export PNG</h2>
+    <img id="outImg" alt="Exported paper doll design">
+    <p id="saveHint">You can also press and hold the image and choose Save Image.</p>
+    <div class="mrow">
+      <label style="display:flex;gap:6px;align-items:center;font-size:14px"><input type="checkbox" id="incBody" checked> Include croquis lines</label>
+      <div style="display:flex;gap:8px">
+        <button class="pill" id="closeModal">Close</button>
+        <button class="pill primary" id="savePng" hidden>Save PNG</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* swatch-kit.js — turn a photo of real material into a seamless swatch.
+ *
+ * No dependencies. Include with <script src="swatch-kit.js"><\/script>; it adds window.SwatchKit.
+ *
+ *   const sw = await SwatchKit.capture({ source: "camera", sizeCm: 30 });   // or source: "album" / a File
+ *   if (sw) img.src = sw.url;   // sw = { url, canvas, sizeCm, seamless }
+ *
+ *   SwatchKit.makeSeamless(canvasOrImage, { size: 640 })  -> canvas  (method 2+: even out light, then edge-blend)
+ *   SwatchKit.svgPattern(id, url, sizeCm, unitsPerCm)     -> "<pattern …>" string for an SVG <defs>
+ *   SwatchKit.cssBackground(url, sizeCm, pxPerCm)         -> { backgroundImage, backgroundSize } for an element
+ *
+ * The camera / crop screen shows a square frame with a cm ruler on its edges. A phone can't measure distance,
+ * so the frame is a guide: whatever the user fits in it is treated as sizeCm × sizeCm.
+ */
+(function () {
+  "use strict";
+
+  const DEFAULTS = {
+    source: "camera",     // "camera" (live camera, falls back to the phone's own camera), "album", or a File/Blob
+    sizeCm: 30,           // real size the frame stands for
+    size: 640,            // output pixels per side
+    seamless: true,       // run makeSeamless on the result
+    quality: 0.85,        // JPEG quality of sw.url
+    text: {
+      camHint: "把 {cm} × {cm} cm 的材料放滿框內",
+      camSmall: "框邊的刻度是公分，可以在旁邊放一把尺對齊",
+      cropHint: "拖曳、雙指縮放照片，讓 {cm} × {cm} cm 放滿框內",
+      cropSmall: "框邊的刻度是公分",
+      cancel: "取消", use: "使用", shot: "拍照", native: "系統相機",
+    },
+  };
+
+  // ---------- Method 2+: even out the light, then blend the edges into a wrap-around tile ----------
+
+  function makeSeamless(src, opts = {}) {
+    const N = opts.size || 640;
+    const band = opts.band ?? 0.22;      // share of the side used for blending at each edge
+    const flatten = opts.flatten ?? true;
+    const c = canvas(N, N), x = c.getContext("2d");
+    x.drawImage(src, 0, 0, N, N);
+    const a = x.getImageData(0, 0, N, N).data;
+
+    // The light falloff: a very soft copy, made by shrinking to ~10 px and scaling back up smoothly.
+    let low = null;
+    if (flatten) {
+      const k = 10, t = canvas(k, k), tx = t.getContext("2d");
+      tx.imageSmoothingQuality = "high"; tx.drawImage(c, 0, 0, k, k);
+      const b = canvas(N, N), bx = b.getContext("2d");
+      bx.imageSmoothingEnabled = true; bx.imageSmoothingQuality = "high"; bx.drawImage(t, 0, 0, N, N);
+      low = bx.getImageData(0, 0, N, N).data;
+    }
+    const mean = [0, 0, 0];
+    for (let i = 0; i < a.length; i += 4) { mean[0] += a[i]; mean[1] += a[i + 1]; mean[2] += a[i + 2]; }
+    for (let ch = 0; ch < 3; ch++) mean[ch] /= N * N;
+    const f = new Float32Array(N * N * 3);
+    for (let p = 0, i = 0; p < N * N; p++, i += 4)
+      for (let ch = 0; ch < 3; ch++)
+        f[p * 3 + ch] = low ? a[i + ch] / Math.max(low[i + ch], 1) * mean[ch] : a[i + ch];
+
+    // Blend with a copy shifted by half a tile: near the edges the shifted copy (which wraps cleanly) takes over.
+    const out = x.createImageData(N, N), o = out.data, h = N >> 1, bw = N * band;
+    for (let y = 0; y < N; y++) for (let xx = 0; xx < N; xx++) {
+      const d = Math.min(xx, y, N - 1 - xx, N - 1 - y);
+      let w = Math.min(d / bw, 1); w = w * w * (3 - 2 * w);
+      const p = y * N + xx, q = ((y + h) % N) * N + (xx + h) % N;
+      for (let ch = 0; ch < 3; ch++) o[p * 4 + ch] = w * f[p * 3 + ch] + (1 - w) * f[q * 3 + ch];
+      o[p * 4 + 3] = 255;
+    }
+    x.putImageData(out, 0, 0);
+    return c;
+  }
+
+  // ---------- Using a swatch ----------
+
+  const svgPattern = (id, url, sizeCm, unitsPerCm, x = 0, y = 0) => {
+    const s = sizeCm * unitsPerCm;
+    return `<pattern id="${id}" patternUnits="userSpaceOnUse" x="${x}" y="${y}" width="${s}" height="${s}"><image href="${url}" width="${s}" height="${s}" preserveAspectRatio="none"/></pattern>`;
+  };
+  const cssBackground = (url, sizeCm, pxPerCm) => ({ backgroundImage: `url("${url}")`, backgroundSize: `${sizeCm * pxPerCm}px ${sizeCm * pxPerCm}px`, backgroundRepeat: "repeat" });
+
+  // ---------- Camera and crop screen ----------
+
+  const CSS = `
+.skit{position:fixed;inset:0;z-index:2147483000;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,sans-serif}
+.skit img{position:absolute;left:0;top:0;max-width:none;transform-origin:0 0}
+.skit video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.skit .crop-only,.skit.crop .cam-only{display:none}.skit.crop .crop-only{display:block}
+.skit-frame{position:absolute;left:50%;top:44%;width:min(84vw,58vh);aspect-ratio:1;transform:translate(-50%,-50%);box-shadow:0 0 0 100vmax rgba(0,0,0,.5);border:2px solid #fff}
+.skit-frame svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.skit-hint{position:absolute;left:16px;right:16px;top:calc(14px + env(safe-area-inset-top,0px));margin:0;text-align:center;color:#fff;font-size:15px;font-weight:800;line-height:1.45;text-shadow:0 1px 3px #000}
+.skit-hint small{display:block;font-size:12px;font-weight:700;opacity:.85}
+.skit-bar{position:absolute;left:0;right:0;bottom:0;padding:18px 24px calc(22px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:1fr auto 1fr;align-items:center;color:#fff;font-weight:800;font-size:14px}
+.skit-bar button,.skit-bar label{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.skit-bar>:first-child{justify-self:start}.skit-bar label{justify-self:end;position:relative}
+.skit-bar input{position:absolute;inset:0;opacity:0;width:100%}
+.skit .skit-shutter{width:70px;height:70px;border-radius:50%;background:#fff;border:5px solid rgba(255,255,255,.4);background-clip:padding-box}
+.skit .skit-shutter:active{transform:scale(.94)}
+.skit .skit-use{justify-self:center;padding:12px 26px;border-radius:99px;background:#fff;color:#111;font-weight:900;font-size:16px}`;
+
+  function ruler(cm) {
+    // Ticks every cm (long every 5), numbers every 5 cm (or every 10 for big frames).
+    const u = 300 / cm, step = cm > 40 ? 10 : 5;
+    let ticks = "";
+    for (let i = 0; i <= cm; i++) {
+      const v = i * u, len = i % 5 ? 7 : 14;
+      ticks += `<line x1="${v}" y1="0" x2="${v}" y2="${len}"/><line x1="0" y1="${v}" x2="${len}" y2="${v}"/><line x1="${v}" y1="300" x2="${v}" y2="${300 - len}"/><line x1="300" y1="${v}" x2="${300 - len}" y2="${v}"/>`;
+    }
+    if (cm > 60) ticks = "";  // too dense to read
+    let nums = "";
+    for (let i = 0; i <= cm; i += step) nums += `<text x="${i * u}" y="28">${i}</text>`;
+    return `<g stroke="#000" stroke-opacity=".5" stroke-width="3">${ticks}</g><g stroke="#fff" stroke-width="1.4">${ticks}</g>` +
+      `<g fill="#fff" font-size="11" font-weight="800" text-anchor="middle" stroke="#000" stroke-opacity=".55" stroke-width="2.5" style="paint-order:stroke">${nums}<text x="150" y="46">cm</text></g>`;
+  }
+
+  function capture(options = {}) {
+    const o = { ...DEFAULTS, ...options, text: { ...DEFAULTS.text, ...(options.text || {}) } };
+    const T = k => o.text[k].replaceAll("{cm}", o.sizeCm);
+    if (!document.getElementById("skit-css")) {
+      const st = document.createElement("style"); st.id = "skit-css"; st.textContent = CSS; document.head.appendChild(st);
+    }
+    return new Promise(resolve => {
+      const root = document.createElement("div");
+      root.className = "skit"; root.hidden = true;
+      root.innerHTML = `<video class="cam-only" playsinline muted autoplay></video><img class="crop-only" alt="" draggable="false">
+<div class="skit-frame"><svg viewBox="0 0 300 300" aria-hidden="true">${ruler(o.sizeCm)}</svg></div>
+<p class="skit-hint cam-only">${T("camHint")}<small>${T("camSmall")}</small></p>
+<p class="skit-hint crop-only">${T("cropHint")}<small>${T("cropSmall")}</small></p>
+<div class="skit-bar"><button type="button" data-k="cancel">${T("cancel")}</button>
+<button type="button" class="skit-shutter cam-only" data-k="shot" aria-label="${T("shot")}"></button>
+<button type="button" class="skit-use crop-only" data-k="use">${T("use")}</button>
+<label class="cam-only">${T("native")}<input type="file" accept="image/*" capture="environment"></label><span class="crop-only"></span></div>`;
+      document.body.appendChild(root);
+      const $ = s => root.querySelector(s), video = $("video"), img = $("img"), frame = $(".skit-frame");
+      let stream = null, crop = null, done = false;
+      const pointers = new Map();
+
+      function finish(result) {
+        if (done) return; done = true;
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        if (crop) URL.revokeObjectURL(crop.url);
+        root.remove(); resolve(result);
+      }
+      function take(src, sx, sy, side) {
+        let c = canvas(o.size, o.size);
+        c.getContext("2d").drawImage(src, sx, sy, side, side, 0, 0, o.size, o.size);
+        if (o.seamless) c = makeSeamless(c, { size: o.size });
+        finish({ url: c.toDataURL("image/jpeg", o.quality), canvas: c, sizeCm: o.sizeCm, seamless: !!o.seamless });
+      }
+      function pickFile(input) {
+        input.onchange = () => { const f = input.files[0]; input.value = ""; f ? openCrop(f) : finish(null); };
+        input.oncancel = () => finish(null);
+        input.click();
+      }
+
+      async function openCam() {
+        const native = $("input[capture]");
+        native.onchange = () => { const f = native.files[0]; native.value = ""; if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; f ? openCrop(f) : finish(null); };
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1920 } }, audio: false });
+        } catch {
+          // No live camera here: the phone's own camera, then the crop screen. (Some browsers need a tap first.)
+          const f = document.createElement("input"); f.type = "file"; f.accept = "image/*"; f.capture = "environment";
+          return pickFile(f);
+        }
+        video.srcObject = stream; root.classList.remove("crop"); root.hidden = false;
+      }
+      function openCrop(file) {
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          root.classList.add("crop"); root.hidden = false;
+          const f = frame.getBoundingClientRect();
+          const s = Math.max(f.width / img.naturalWidth, f.height / img.naturalHeight);
+          crop = { url, min: s, s, x: f.left + (f.width - img.naturalWidth * s) / 2, y: f.top + (f.height - img.naturalHeight * s) / 2 };
+          draw();
+        };
+        img.onerror = () => finish(null);
+        img.src = url;
+      }
+      function draw() {
+        const f = frame.getBoundingClientRect(), w = img.naturalWidth * crop.s, h = img.naturalHeight * crop.s;
+        crop.x = Math.min(f.left, Math.max(f.right - w, crop.x));
+        crop.y = Math.min(f.top, Math.max(f.bottom - h, crop.y));
+        img.style.transform = `translate(${crop.x}px,${crop.y}px) scale(${crop.s})`;
+      }
+      function zoom(k, cx, cy) {
+        const s = Math.min(Math.max(crop.s * k, crop.min), crop.min * 12);
+        crop.x = cx - (cx - crop.x) * s / crop.s; crop.y = cy - (cy - crop.y) * s / crop.s; crop.s = s; draw();
+      }
+
+      root.addEventListener("pointerdown", e => { if (crop && !e.target.closest("button,label")) { pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); root.setPointerCapture(e.pointerId); } });
+      root.addEventListener("pointermove", e => {
+        const prev = pointers.get(e.pointerId);
+        if (!crop || !prev) return;
+        const pts = [...pointers.values()];
+        if (pts.length === 1) { crop.x += e.clientX - prev.x; crop.y += e.clientY - prev.y; draw(); }
+        else {
+          const other = pts.find(p => p !== prev), d0 = Math.hypot(prev.x - other.x, prev.y - other.y), d1 = Math.hypot(e.clientX - other.x, e.clientY - other.y);
+          const m0 = [(prev.x + other.x) / 2, (prev.y + other.y) / 2], m1 = [(e.clientX + other.x) / 2, (e.clientY + other.y) / 2];
+          crop.x += m1[0] - m0[0]; crop.y += m1[1] - m0[1];
+          d0 > 0 ? zoom(d1 / d0, m1[0], m1[1]) : draw();
+        }
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      });
+      ["pointerup", "pointercancel"].forEach(t => root.addEventListener(t, e => pointers.delete(e.pointerId)));
+      root.addEventListener("wheel", e => { if (crop) { e.preventDefault(); zoom(Math.exp(-e.deltaY / 300), e.clientX, e.clientY); } }, { passive: false });
+
+      $('[data-k="cancel"]').onclick = () => finish(null);
+      $('[data-k="use"]').onclick = () => {
+        if (!crop) return;
+        const f = frame.getBoundingClientRect(), side = Math.min(f.width / crop.s, img.naturalWidth, img.naturalHeight);
+        take(img, Math.max(0, (f.left - crop.x) / crop.s), Math.max(0, (f.top - crop.y) / crop.s), side);
+      };
+      $('[data-k="shot"]').onclick = () => {
+        const vw = video.videoWidth, vh = video.videoHeight;
+        if (!vw) return;
+        // Map the on-screen square back to video pixels (the video fills the screen like object-fit: cover).
+        const box = video.getBoundingClientRect(), f = frame.getBoundingClientRect();
+        const s = Math.max(box.width / vw, box.height / vh), ox = (box.width - vw * s) / 2, oy = (box.height - vh * s) / 2;
+        const side = Math.min(f.width / s, vw, vh);
+        take(video, Math.min(Math.max((f.left - box.left - ox) / s, 0), vw - side), Math.min(Math.max((f.top - box.top - oy) / s, 0), vh - side), side);
+      };
+
+      if (o.source instanceof Blob) openCrop(o.source);
+      else if (o.source === "album") { const f = document.createElement("input"); f.type = "file"; f.accept = "image/*"; pickFile(f); }
+      else if (navigator.mediaDevices?.getUserMedia) openCam();
+      else { const f = document.createElement("input"); f.type = "file"; f.accept = "image/*"; f.capture = "environment"; pickFile(f); }
+    });
+  }
+
+  function canvas(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+
+  window.SwatchKit = { capture, makeSeamless, svgPattern, cssBackground, defaults: DEFAULTS };
+})();
+
+</script>
+<script>
+const CROQUIS={"regular": {"vb": "0 0 726.93 938.64", "css": ".cls-1,.cls-10,.cls-15,.cls-3,.cls-4,.cls-5{fill:#fff;}.cls-1,.cls-10,.cls-11,.cls-12,.cls-13,.cls-14,.cls-2,.cls-3,.cls-4,.cls-5{stroke:#6d6e71;}.cls-1,.cls-12,.cls-13,.cls-14,.cls-15,.cls-16,.cls-17,.cls-18,.cls-2,.cls-3,.cls-4,.cls-5{stroke-linecap:round;stroke-linejoin:round;}.cls-1,.cls-2{stroke-width:0.75px;}.cls-11,.cls-12,.cls-13,.cls-14,.cls-16,.cls-17,.cls-2,.cls-7,.cls-8,.cls-9{fill:none;}.cls-14,.cls-3{stroke-width:0.5px;}.cls-11,.cls-13,.cls-4,.cls-9{stroke-width:0.25px;}.cls-10,.cls-12,.cls-5{stroke-width:0.85px;}.cls-6{fill:#231f20;opacity:0.08;}.cls-7,.cls-8{stroke:#a7a9ac;}.cls-10,.cls-11,.cls-7,.cls-8,.cls-9{stroke-miterlimit:10;}.cls-7{stroke-width:0.55px;}.cls-8{stroke-width:0.15px;}.cls-9{stroke:#939598;}.cls-15,.cls-16,.cls-17{stroke:#231f20;}.cls-15,.cls-17{stroke-width:1.04px;}.cls-18{fill:#f1f2f2;stroke:#221f1f;stroke-width:0.78px;}.b-cls-1,.b-cls-3{fill:#fff;}.b-cls-2,.b-cls-4{fill:none;}.b-cls-2,.b-cls-3,.b-cls-4{stroke:#231f20;}.b-cls-2,.b-cls-3,.b-cls-4,.b-cls-5{stroke-linecap:round;stroke-linejoin:round;}.b-cls-3,.b-cls-4{stroke-width:1.04px;}.b-cls-5{fill:#f1f2f2;stroke:#221f1f;stroke-width:0.78px;}.s-cls-1{fill:#fff;stroke:#231f20;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.04px;}.z-cls-1,.z-cls-6{fill:#fff;}.z-cls-1,.z-cls-4{stroke:#231f20;stroke-width:1.06px;}.z-cls-1,.z-cls-4,.z-cls-5,.z-cls-6{stroke-linecap:round;stroke-linejoin:round;}.z-cls-2{fill:#dedede;}.z-cls-3{fill:#414042;}.z-cls-4{fill:none;}.z-cls-5{fill:#e6e6e5;}.z-cls-5,.z-cls-6{stroke:#414042;stroke-width:0.53px;}.p-cls-1,.p-cls-2,.p-cls-5,.p-cls-7,.p-cls-8{fill:#fff;}.p-cls-2,.p-cls-3,.p-cls-4,.p-cls-5,.p-cls-8,.p-cls-9,.p-drap-shed{stroke:#221f1f;}.p-cls-2,.p-cls-3,.p-cls-4,.p-cls-5,.p-cls-6,.p-cls-7,.p-cls-8,.p-cls-9,.p-drap-shed{stroke-linecap:round;}.p-cls-3,.p-cls-4,.p-cls-6{fill:none;}.p-cls-3,.p-cls-4,.p-cls-5,.p-cls-6,.p-cls-7,.p-cls-8,.p-drap-shed{stroke-linejoin:round;}.p-cls-4,.p-cls-5,.p-cls-9,.p-drap-shed{stroke-width:0.75px;}.p-cls-6,.p-cls-7{stroke:#231f20;}.p-cls-6{stroke-width:3px;opacity:0.21;}.p-cls-9,.p-drap-shed{fill:#dedede;}", "body": "<g><path class=\"cls-1\" d=\"M391.63,849.83a30.56,30.56,0,0,1,.47,9.18c-.5,5.18.22,4.84-3.58,13.48-2.87,6.52-6.27,14.57-11,14.74-7.89.29-11.27-13.83-12.83-19.07s-.23-17.11-.23-17.11\"/><path class=\"cls-1\" d=\"M335.22,846.78l-.5,3.28a30.16,30.16,0,0,0,0,8.15c.6,4.87.25,4.83,4,13.47,2.87,6.53,6.93,15.68,11.6,15.55,6.3-.17,10.67-14.64,12.23-19.88s.56-16.4.56-16.4\"/><path class=\"cls-1\" d=\"M365.78,870.77s5.26-4.91,9.64-6.31,12.88,6.07,13.1,8\"/><path class=\"cls-2\" d=\"M363.5,864.28a79.73,79.73,0,0,1,14.37-1.4c6.31.18,12.44,2.1,12.61,3\"/><path class=\"cls-1\" d=\"M363.68,863.06a78.73,78.73,0,0,0-14.37-1.4c-6.3.17-13.85,1.31-14,2.19,0,0,.87,3.48,1.42,3.4s9.18-4.51,13.77-4.27,12.08,4,12.13,4.37l0,.37s.31.24.71-1.5A13.1,13.1,0,0,0,363.68,863.06Z\"/><path class=\"cls-1\" d=\"M339.39,870.1s5.65,15.22,10.53,15.5c6.39.38,11.48-16.06,11.48-16.06s-5.25-4.91-9.63-6.31-12.89,6.08-13.1,8\"/><path class=\"cls-3\" d=\"M358.69,876s-1.34,3.72-4.11,3.64c-2-.06-2.41-1.21-2.41-1.21s-3.19,1.32-3.94.75-1.88,0-2.45-.37a12.41,12.41,0,0,0-2.82-.75\"/><path class=\"cls-1\" d=\"M388.11,871.13s-5.69,14.94-10.57,15.23c-6.39.37-11.48-16.07-11.48-16.07s5.25-4.9,9.63-6.31,12.89,6.08,13.1,8\"/><path class=\"cls-3\" d=\"M368.82,876.66s1.48,4.2,4.35,4c1.89-.16,2.12-1.41,2.12-1.41s3.19,1.32,3.94.76,1.88,0,2.45-.38a12.41,12.41,0,0,1,2.82-.75\"/><path class=\"cls-1\" d=\"M363.35,863.61a78.73,78.73,0,0,1,14.37-1.4c6.3.17,13.86,1.32,14,2.19,0,0-.87,3.48-1.42,3.4s-9.18-4.5-13.76-4.27-12.08,4-12.13,4.38l-.05.37s-.32.24-.72-1.5A13.17,13.17,0,0,1,363.35,863.61Z\"/><path class=\"cls-1\" d=\"M372.3,862.11s1.42.32,1.58,1.58a2.56,2.56,0,0,1-.24,1.42l7.2-.07s-.4-.32.08-1.35A6.19,6.19,0,0,1,382,862a20.67,20.67,0,0,0-5.3-.63A15.57,15.57,0,0,0,372.3,862.11Z\"/><path class=\"cls-1\" d=\"M345.17,861s1.42.32,1.58,1.58a2.61,2.61,0,0,1-.24,1.43l7.2-.08s-.4-.32.08-1.35a6.28,6.28,0,0,1,1.11-1.66,20.76,20.76,0,0,0-5.3-.63A15.6,15.6,0,0,0,345.17,861Z\"/><path class=\"cls-4\" d=\"M337.42,825.71s-.06,31.28,4.9,34.44\"/><path class=\"cls-4\" d=\"M390.12,824.86s-2.63,34.2-5.36,36.42\"/><path class=\"cls-4\" d=\"M373,862.3s-7.45-5.42-8.8-14.79\"/><path class=\"cls-4\" d=\"M363.2,847.17s-4.06,13.09-8.3,13.75\"/><polygon class=\"cls-1\" points=\"394.38 823.85 391.1 811.97 390.69 818.6 391.89 824.29 394.27 825.95 394.38 823.85\"/><polygon class=\"cls-1\" points=\"332.25 823.85 335.53 811.97 335.94 818.6 334.75 824.29 332.36 825.95 332.25 823.85\"/><path class=\"cls-5\" d=\"M347.71,181.81s-17.66,4.46-26-1.5-1.58-14.13-.42-17.47c2.22-6.4,4.86-8.86,3.67-10.28s-5.42-3.23,2.2-22c2.95-7.26-5.79-8.8-2.94-13.8a120.93,120.93,0,0,1,8.13-12.64s-2.67-16.6,12.09-24c1.66-.83.54,1.09,1.78,0C357.33,70.32,367.09,66,380,73.84c14.53,8.81,26.44,14.29,25.25,28.1s3.46,18.38,8.22,28.38,5.59,17.82,3.21,23.78-2.18.34,1.39,7.48-1.38,9.66-5.06,12.88c-7.86,6.87-6,5.26-15.06,7.88s-12,2.44-17.2.3-6.67-2.86-6.67-2.86\"/><path class=\"cls-5\" d=\"M215.28,486.36A38.41,38.41,0,0,1,212,496.59c-2.47,4.79-4.48,5.25-5,5.1s-.77-.93-.77-.93l.95-3.21\"/><path class=\"cls-6\" d=\"M349.93,306.94v-1.28c0-1.42-.14-3.84-.14-3.84a10.17,10.17,0,0,1-1.42,1.85c-1.14,1.28-2.13,1.42-3.69,2a8.88,8.88,0,0,0-2.85,1.42c-1,.71-.71.28-2.55,1s-4.84,1.57-4.84,1.57a8.47,8.47,0,0,1,4.27-.43c2.84.28,4.26-1.42,5.54-.14s3.41,1,3.69,1.42a13.41,13.41,0,0,0,1.14,1.28s-.14-1-.28-1.71-.57.29-.15-.71a1.3,1.3,0,0,0-.28-1.56Z\"/><path class=\"cls-5\" d=\"M511.64,488.36A38.21,38.21,0,0,0,515,498.59c2.47,4.79,4.48,5.25,4.94,5.1s.78-.93.78-.93l-1-3.21\"/><path class=\"cls-5\" d=\"M393.61,151.74c-.46,3.3-3,11-3.31,13.21-1,6.79-10.18,13.57-10.18,13.57l.23,7.69a22.32,22.32,0,0,0,.13,2.26c.49,4.92-1.19,7.19,6.37,13.8,7.31,6.39,17.42,8.47,26.38,9.86l15.91,4c3.29.51,17.91,9.78,25.15,41.65,8.6,37.82,8.73,70,10.94,86.24s9.28,31.44,13.45,58c2.27,14.36,4.22,29.18,5.92,38.85l.78,4.85a15.35,15.35,0,0,0,1,5c1,2.52,5.55,4,11.09,10.08s9.77,7.12,15.8,10.22c7.32,3.77,9.74,7.27,9.74,7.27s.86,1.78-2.17.77c-1.42-.47-2.09-.81-4.91-2,0,0,4.48,4.58,5.09,6.84s2.88,9.85,2.88,9.85-1.23,1.23-2,1l-1-.26a46.9,46.9,0,0,0,2.33,5.11h-2.52c-2.52,0-10.08-13.1-10.08-13.1s-11.11-7.64-13.85-9.15-7-5.1-8.51-4.33-1.54,4.95-1.54,4.95-.16,1.85,3.23,11.55c4.28,12.24,1.57,9-.45,9s-8.61-16.67-13.14-24.74-3.3-18.44-3.3-18.44a128.13,128.13,0,0,0-5.26-17.93c-4.56-12.84-12.83-32.57-15.66-46-5.64-26.77-8.58-34.34-8.58-34.34S437.4,319.38,433.18,300c-2.76-12.69-6.81-24.24-7.76-29.36l-.67-3.66L409.47,355.7s21.27,43.42,22.74,85.74c3.75,108.33-20.82,175.2-20,196.75.5,13.06,2.86,30.49.66,50.31-1.43,12.88-6.86,28.37-8.92,38.84-7,35.47-13.68,70.72-14.09,75.64-.22,2.61,1.43,6.36,1.23,9-.17,2.34-.3,7-.5,9.75-.41,5.75,1.61,24.4,1.61,33,0,6.29-8.75,7.61-14,7.8-4.49.17-13.57-.78-14-5.31-.75-7.94.57-15.75.57-18.89,0-7,3.74-23.14,4.56-28.89s2.1-11.56,3.42-25.08c1.52-15.59-2.46-43.56-3.69-58.74s2.15-51.15,2.15-51.15,2.06-29,3.3-40.15c.63-5.63-4.74-79.23-7.25-110.83-2.47-31.14-2.49-39.38-2.07-45.23.24-3.44,3.59-11,3.59-11-.62.13-8.16-.57-8,.44.24,2.12,4.74,14.08,2.95,36.77-3.22,40.85-10.53,128.46-10.53,128.46l4.49,42.58c1.23,13.54,4.5,24.14,2.86,40.54s-5,47.86-4.92,72.07c0,4.76,1.13,10.61,2.23,16.54.26,1.39.13.83.4,2.23.45,2.39,0,1.11.39,3.43,1.64,9.43,1,12.19,3.42,28.5,1.71,11.73,2.28,11.9.59,16.48-2.08,5.64-4.68,5.8-13.35,6-7.88.22-16.1-4.48-14.87-10.22s2.89-24.77,2.89-24.77-.41-1.64-1.23-8.2.88-15.06.88-15.06-2-20.14-10.64-61.57-8.07-32.74-9.44-48.35c-1.08-12.24,2.67-30.67-1.05-57-1-7.26-9.69-64.36-11.48-73.14-8.29-40.61-11.94-78.19-12.58-104.71C290.38,401.17,315,357.94,315,357.94s-3-20.65-6.18-38.93c-1.77-10.08-8.34-39.37-11.27-49.8l-1.32,7.33c-.79,4.33-4.06,15.15-5.14,21.4-3.36,19.52-10.52,57.48-10.52,57.48s-.76,8.33-6.41,35.1c-2.82,13.38-11.09,33.11-15.65,46-.7,2-1.46,3-2,4.65l-.63,1.63s-1.56,4-1.94,4.95,0,5.71,0,5.71,1.25,10.38-3.29,18.44-11.12,24.74-13.14,24.74-4.73,3.23-.45-9c3.39-9.7,3.23-11.55,3.23-11.55s0-4.18-1.54-4.95-5.77,2.82-8.51,4.33-13.85,9.15-13.85,9.15-7.56,13.1-10.08,13.1h-2.52a49.76,49.76,0,0,0,2.33-5.11l-1,.26c-.82.21-2.05-1-2.05-1s2.26-7.6,2.87-9.85,5.1-6.84,5.1-6.84c-2.82,1.2-3.5,1.54-4.91,2-3,1-2.17-.77-2.17-.77s2.42-3.5,9.74-7.27c6-3.1,10.25-4.17,15.8-10.22s9.68-8.63,10.69-11.15l1-5.71c.33-1.41.54-2.47.54-2.47,1.71-9.71,3.51-23.67,5.84-38.5,4.18-26.53,10.57-42.39,11.27-58.73,1.42-33,3.81-51.85,12.41-89.67s31.1-39.19,31.34-39.44l1.21-.18a124.17,124.17,0,0,1,14.59-2.57c9-1.13,24.51-6.77,28.27-12.41,1.7-2.55,1.78-6.68,1.37-10.44l-.36-9.06s-7.75-6.3-8.72-11.63c-.47-2.54-4-5.56-4.11-9.55-.15-4.39,3.21-16.51,3.72-18.54,1-3.87,0-7.59,1.48-21.64a15.82,15.82,0,0,1,5.77-11,8.66,8.66,0,0,1,8.36-3.93c6,.46,8.73.92,11.49.92s23-1.84,25.29,1.38-7.36,8.73-5.52,17.47\"/><path class=\"cls-7\" d=\"M291,446.54s16.31,1.16,42.42,9.77a200.35,200.35,0,0,1,26.86,10.82l8.49.29s20.09-10.17,33.13-13.88c21.08-6,29.83-7.67,29.83-7.67\"/><line class=\"cls-8\" x1=\"314.93\" y1=\"356.19\" x2=\"409.48\" y2=\"354.98\"/><line class=\"cls-8\" x1=\"314.9\" y1=\"358.07\" x2=\"410.32\" y2=\"356.69\"/><path class=\"cls-7\" d=\"M299.66,277s12.77-17.44,27.82-17.44c14.27,0,21.83,7,27.69,11a19.17,19.17,0,0,0,8.86,3.23s1.09.71,4-1.34c5.12-3.58,15-10.88,27.95-11.56,20.42-1.08,27.26,13.08,27.26,13.08\"/><path class=\"cls-7\" d=\"M300.52,278.52s11.91-17.27,27-17.27c14.27,0,21.83,7,27.69,11a19.09,19.09,0,0,0,8.86,3.22s1.09.71,4-1.34c5.12-3.58,15-10.88,27.95-11.56,20.42-1.07,26.6,12.63,26.6,12.63\"/><path class=\"cls-6\" d=\"M305.47,302.93s.85,3.88,7.3,5.49a30.55,30.55,0,0,0,11.28.81,14.65,14.65,0,0,1-7,2.15,21,21,0,0,0-7.8,2.15,17.14,17.14,0,0,0-.8-3.23A74.46,74.46,0,0,0,305.47,302.93Z\"/><path class=\"cls-7\" d=\"M361,466.84a124.9,124.9,0,0,0-18.85-9c-33.7-11.92-50.2-13.6-50.2-13.6\"/><path class=\"cls-7\" d=\"M368.72,467.42s11.21-9.58,35.61-15.75c18.93-4.79,27.35-7.15,27.35-7.15\"/><path class=\"cls-9\" d=\"M305.76,302.45a20.66,20.66,0,0,0,14,7.11\"/><path class=\"cls-9\" d=\"M359.43,303c-3.77,2.18-4.35,2.91-7.75,4-1.8.57-6.57,2.23-8.45,2.39-1.29.1-5.3,1-7.46.4\"/><path class=\"cls-6\" d=\"M418.36,301.87s-.5,3.93-6.79,6.11a30.61,30.61,0,0,1-11.17,1.8,14.6,14.6,0,0,0,7.15,1.52,21,21,0,0,1,7.95,1.46,18,18,0,0,1,.52-3.29A75.09,75.09,0,0,1,418.36,301.87Z\"/><path class=\"cls-9\" d=\"M419,300.05a20,20,0,0,1-12.86,8.56\"/><path class=\"cls-9\" d=\"M366.18,302.55c3.77,2.19,4.35,2.91,7.75,4,1.8.56,6.57,2.22,8.45,2.38,1.29.11,5.29,1,7.46.4\"/><path class=\"cls-5\" d=\"M512.09,478.77c.83.69,1.94,1.54,2.58,2.19,2.87,2.87,4.49,9.14,6.27,13.82\"/><path class=\"cls-10\" d=\"M353.18,632.93s-1.47,12.38-1.47,15.88\"/><path class=\"cls-10\" d=\"M374.21,632.31s1.5,11.5,1.5,15.5\"/><path class=\"cls-11\" d=\"M392.19,646a31.87,31.87,0,0,0,13.08-3.1\"/><path class=\"cls-11\" d=\"M337.21,649.31a31.77,31.77,0,0,1-12.9-3.78\"/><path class=\"cls-5\" d=\"M424.59,269.09a59.55,59.55,0,0,0-1.42-7.72\"/><path class=\"cls-12\" d=\"M297.28,270.87c.77-2.49,1.52-5.92,2.28-8.41\"/><path class=\"cls-5\" d=\"M214.84,476.77c-.83.69-1.94,1.54-2.59,2.19-2.86,2.87-4.48,9.14-6.26,13.82\"/><path class=\"cls-13\" d=\"M322,161.56s9.67-7,10.67-13.67\"/><path class=\"cls-13\" d=\"M414.83,154.69s-1,8.47-5,11.53-12.15,1.41-14.33,4.56c-10,14.5,6.82,7.76,7.82,2.76\"/><path class=\"cls-14\" d=\"M334.82,157.34s-15.29,11.94-6,15.28\"/><path class=\"cls-13\" d=\"M367.84,103.36c-3.71-1.89-6.46-5.75-5.83-9.87a10.25,10.25,0,0,1,8.21-8.34\"/><path class=\"cls-14\" d=\"M341.59,110.27c-1-1.42-2.67-2.12-4.26-2.75s-3.3-1.37-4.19-2.84-1.65-8.71,0-9.09\"/><path class=\"cls-14\" d=\"M349.76,102.51a17.66,17.66,0,0,1-1.27-21.94\"/><path class=\"cls-14\" d=\"M357.85,102.24a6.35,6.35,0,0,1-2.32-5.94\"/><path class=\"cls-14\" d=\"M362.75,79.63c7.93-12,30.49,3.12,36.95,18.82\"/><path class=\"cls-14\" d=\"M404.66,101.58c3,2.62-6.13,4.7-9.72,6.45-5.37,2.61-9.6,8.17-9.27,14.14.27,4.76,3.12,11.38,6.18,15,6.89,8.27,23.44,1.38,23,18.39\"/><path class=\"cls-14\" d=\"M371.48,102.83a3,3,0,0,1-2.15-2,4.61,4.61,0,0,1,.15-3,3.12,3.12,0,0,1,1.58-1.89\"/><path class=\"cls-13\" d=\"M381.2,102.45a9,9,0,0,1,5.2-5.66,17.17,17.17,0,0,1,7.79-1.13,8.78,8.78,0,0,1,3.89.9,3.62,3.62,0,0,1,2,3.26,4.08,4.08,0,0,1-2.1,2.94c-1.06.66-2.27,1-3.37,1.64-2.74,1.48-4.63,4.11-6.42,6.66a12.79,12.79,0,0,0-1.52,2.57,10.92,10.92,0,0,0-.61,2.83,43.17,43.17,0,0,0-.24,7.28\"/><path class=\"cls-13\" d=\"M354.43,102.54c-2.59-4.28-2.33-9.72-1-14.54a24.2,24.2,0,0,1,2.66-6.41A23.68,23.68,0,0,1,361.12,76a20.1,20.1,0,0,1,6.9-4,10.87,10.87,0,0,1,7.82.39\"/><path class=\"cls-14\" d=\"M345.23,80a19.62,19.62,0,0,0-3,13.84,3.75,3.75,0,0,0,1.41,2.77\"/><path class=\"cls-14\" d=\"M389.65,134.89s-3.64,6.28,3,15.86,14.53,10.89,6.27,13.54\"/><path class=\"cls-13\" d=\"M408,177.46c1.32-2.26,2.66-5.06,1.43-7.37a4,4,0,0,0-4.48-1.89\"/><path class=\"cls-13\" d=\"M397.88,165a10.74,10.74,0,0,0-12,10.37,7.1,7.1,0,0,0,1.93,5.4c1.68,1.6,4.21,1.91,6.52,1.8\"/><path class=\"cls-13\" d=\"M404.18,106.82a19.28,19.28,0,0,0-5,8,11.54,11.54,0,0,0,1,9.22,13.82,13.82,0,0,0,3.45,3.58c2.9,2.21,6.24,3.78,9.26,5.84s3.69,5.93,4.67,9.44\"/><path class=\"cls-13\" d=\"M338.86,124.28a3.2,3.2,0,0,0-3-1.06,15.18,15.18,0,0,0-3.14,1,6.39,6.39,0,0,1-4.74.17c-1.47-.68-4.69-4.64-3.77-6\"/></g>", "pieces": {"bodice": {"lines": "<path class=\"b-cls-1\" d=\"M461.56,277.83c.33,1.21-37.05,13.4-37.05,13.4L421.92,284c-5.67,28.48-11.5,57.91-12.46,72.56H314.81c-.95-14.65-6.77-44.09-12.46-72.57,0,0-2.58,7.25-2.58,7.26s-37.39-12.19-37-13.4c4.13-15,13.3-42.85,18.29-54,2.43-5.45,8.8-9.52,14.52-10,11.57,14,52.09,47,66.61,58.88,14.71-12,54.85-44.74,66.6-58.88,5.72.44,12.1,4.51,14.53,10C448.25,235,457.43,262.8,461.56,277.83Z\"/><path class=\"b-cls-2\" d=\"M421.92,284c-5.77,29-11.47,57.75-12.46,72.56H314.81c-1-14.81-6.68-43.58-12.46-72.56\"/><line class=\"b-cls-3\" x1=\"330.72\" y1=\"296.17\" x2=\"338.48\" y2=\"356.54\"/><line class=\"b-cls-3\" x1=\"393.55\" y1=\"296.17\" x2=\"385.79\" y2=\"356.54\"/><line class=\"b-cls-3\" x1=\"402.53\" y1=\"288.29\" x2=\"418.54\" y2=\"298.54\"/><line class=\"b-cls-3\" x1=\"321.75\" y1=\"288.29\" x2=\"305.73\" y2=\"298.54\"/><line class=\"b-cls-4\" x1=\"362.14\" y1=\"272.69\" x2=\"315.01\" y2=\"233.61\"/><line class=\"b-cls-4\" x1=\"362.14\" y1=\"272.69\" x2=\"409.26\" y2=\"233.61\"/><path class=\"b-cls-3\" d=\"M423.65,266.31c-3-11.94-6.36-23.25-14.39-32.7l19.48-19.79c5.72.44,12.1,4.51,14.53,10,5,11.2,14.16,39,18.29,54,.33,1.21-37.05,13.4-37.05,13.4L421.92,284\"/><path class=\"b-cls-3\" d=\"M300.62,266.31c3-11.94,6.36-23.25,14.39-32.7l-19.48-19.79c-5.72.44-12.09,4.51-14.52,10-5,11.2-14.16,39-18.29,54-.34,1.21,37,13.4,37,13.4l2.58-7.25\"/><path class=\"b-cls-5\" d=\"M430.65,241c-4.46-1.63-8.91,43.87-8.91,43.87\"/><path class=\"b-cls-5\" d=\"M293.63,241c4.46-1.63,8.91,43.87,8.91,43.87\"/>", "walls": "<path class=\"b-cls-1\" d=\"M461.56,277.83c.33,1.21-37.05,13.4-37.05,13.4L421.92,284c-5.67,28.48-11.5,57.91-12.46,72.56H314.81c-.95-14.65-6.77-44.09-12.46-72.57,0,0-2.58,7.25-2.58,7.26s-37.39-12.19-37-13.4c4.13-15,13.3-42.85,18.29-54,2.43-5.45,8.8-9.52,14.52-10,11.57,14,52.09,47,66.61,58.88,14.71-12,54.85-44.74,66.6-58.88,5.72.44,12.1,4.51,14.53,10C448.25,235,457.43,262.8,461.56,277.83Z\"/><path class=\"b-cls-2\" d=\"M421.92,284c-5.77,29-11.47,57.75-12.46,72.56H314.81c-1-14.81-6.68-43.58-12.46-72.56\"/><line class=\"b-cls-4\" x1=\"362.14\" y1=\"272.69\" x2=\"315.01\" y2=\"233.61\"/><line class=\"b-cls-4\" x1=\"362.14\" y1=\"272.69\" x2=\"409.26\" y2=\"233.61\"/><path class=\"b-cls-3\" d=\"M423.65,266.31c-3-11.94-6.36-23.25-14.39-32.7l19.48-19.79c5.72.44,12.1,4.51,14.53,10,5,11.2,14.16,39,18.29,54,.33,1.21-37.05,13.4-37.05,13.4L421.92,284\"/><path class=\"b-cls-3\" d=\"M300.62,266.31c3-11.94,6.36-23.25,14.39-32.7l-19.48-19.79c-5.72.44-12.09,4.51-14.52,10-5,11.2-14.16,39-18.29,54-.34,1.21,37,13.4,37,13.4l2.58-7.25\"/><path class=\"b-cls-5\" d=\"M430.65,241c-4.46-1.63-8.91,43.87-8.91,43.87\"/><path class=\"b-cls-5\" d=\"M293.63,241c4.46-1.63,8.91,43.87,8.91,43.87\"/>", "sil": ["M461.56,277.83c.33,1.21-37.05,13.4-37.05,13.4L421.92,284c-5.67,28.48-11.5,57.91-12.46,72.56H314.81c-.95-14.65-6.77-44.09-12.46-72.57,0,0-2.58,7.25-2.58,7.26s-37.39-12.19-37-13.4c4.13-15,13.3-42.85,18.29-54,2.43-5.45,8.8-9.52,14.52-10,11.57,14,52.09,47,66.61,58.88,14.71-12,54.85-44.74,66.6-58.88,5.72.44,12.1,4.51,14.53,10C448.25,235,457.43,262.8,461.56,277.83Z"], "box": [254, 205, 216, 159], "parts": [[254, 205, 216, 159]]}, "skirt": {"lines": "<path class=\"s-cls-1\" d=\"M314.81,356.54c-41.63,43.83-84.72,145.41-126.39,245,0,0,23.86,21.25,38.42,21.52l1.26-3.44L271.5,633l-.93,6.41a237.67,237.67,0,0,0,44.79,8l.84-4.94,34,2.43.2,3.81A476,476,0,0,0,403.21,647L403,644,437.73,639l.82,5.49a170.38,170.38,0,0,0,33.89-11.09l-1.6-5.84,26.81-6.51,1.3,2.42c14.56-.27,36.9-21.94,36.9-21.94-41.66-99.61-84.75-201.19-126.39-245\"/><path class=\"s-cls-1\" d=\"M271.5,633c12.56-83.07,37.29-220.08,40.08-219.42\"/><line class=\"s-cls-1\" x1=\"316.2\" y1=\"640.45\" x2=\"350.39\" y2=\"406.26\"/><line class=\"s-cls-1\" x1=\"350.39\" y1=\"640.45\" x2=\"359.22\" y2=\"420.61\"/><line class=\"s-cls-1\" x1=\"402.84\" y1=\"642.16\" x2=\"382.64\" y2=\"406.26\"/><line class=\"s-cls-1\" x1=\"437.39\" y1=\"636.78\" x2=\"403.61\" y2=\"414.8\"/><line class=\"s-cls-1\" x1=\"470.84\" y1=\"627.59\" x2=\"412.75\" y2=\"403.86\"/><path class=\"s-cls-1\" d=\"M497.65,619.17c-17.08-61.62-40.1-130.8-66.57-204.37\"/><path class=\"s-cls-1\" d=\"M228.1,619.17c15.7-65.71,37.86-133.08,65.15-201.74\"/>", "walls": "<path class=\"s-cls-1\" d=\"M314.81,356.54c-41.63,43.83-84.72,145.41-126.39,245,0,0,23.86,21.25,38.42,21.52l1.26-3.44L271.5,633l-.93,6.41a237.67,237.67,0,0,0,44.79,8l.84-4.94,34,2.43.2,3.81A476,476,0,0,0,403.21,647L403,644,437.73,639l.82,5.49a170.38,170.38,0,0,0,33.89-11.09l-1.6-5.84,26.81-6.51,1.3,2.42c14.56-.27,36.9-21.94,36.9-21.94-41.66-99.61-84.75-201.19-126.39-245\"/>", "sil": ["M314.81,356.54c-41.63,43.83-84.72,145.41-126.39,245,0,0,23.86,21.25,38.42,21.52l1.26-3.44L271.5,633l-.93,6.41a237.67,237.67,0,0,0,44.79,8l.84-4.94,34,2.43.2,3.81A476,476,0,0,0,403.21,647L403,644,437.73,639l.82,5.49a170.38,170.38,0,0,0,33.89-11.09l-1.6-5.84,26.81-6.51,1.3,2.42c14.56-.27,36.9-21.94,36.9-21.94-41.66-99.61-84.75-201.19-126.39-245"], "box": [180, 348, 364, 309], "parts": [[180, 348, 364, 309]]}, "zelda": {"lines": "<path class=\"z-cls-1\" d=\"M415,597.61q-52-39.52-103.59,0\"/><path class=\"z-cls-1\" d=\"M410.39,356.82C445,402.39,443,496.66,414.84,597.61c0,0-30.55-19.76-51.72-19.76s-51.71,19.76-51.71,19.76c-28.14-100.95-31.16-194.79,3.32-240.79Z\"/><path class=\"z-cls-1\" d=\"M309.73,612.43c-14.13,49.24-45.31,67.06-52,103.5,4.46,3.18,23.63,9.38,32.48,11.39l-.5,5.09c8.57,2.34,28.95,8.37,31.94,6.25l.75-6.35c4.81-2.61,19.91-2.12,26.18-.12,0,0-.46,1.41.25,5,1.09,2.89,17,2.2,17,2.2s20.9,0,26.65-.59v-6.43c6.76-1.41,30.85-3.67,33.15-1.45l1.23,4.55c7.46.23,23.35-5.5,24.87-7.33l-.83-4.78c3.66-2,21.93-6.91,23.6-10.34-5.24-37.11-43.19-53.19-58.41-102\"/><path class=\"z-cls-1\" d=\"M311.41,597.61c-14,48.86-46.44,81.77-53,117.93,4.43,3.15,23.4,9.38,32.18,11.38l-.49,5.05c8.5,2.31,28.86,8.33,31.83,6.22l.74-6.3c4.77-2.59,19.83-2.12,26.06-.14a12.46,12.46,0,0,0,.25,5c1.08,2.86,16.89,2.19,16.89,2.19s20.7,0,26.41-.58V732c6.7-1.4,30.76-3.66,33-1.46l1.23,4.51c7.4.22,23.25-5.48,24.76-7.3l-.82-4.74c3.63-2,21.73-6.93,23.38-10.33-5.19-36.82-43.91-66.58-59-115\"/><path class=\"z-cls-1\" d=\"M425.9,734.77c-4.54-52.2-35-129.83-33.5-150.49\"/><path class=\"z-cls-1\" d=\"M297.46,734.77c4.69-53.88,38.33-125.19,36.21-150.52\"/><line class=\"z-cls-1\" x1=\"365.9\" y1=\"739.4\" x2=\"362.93\" y2=\"577.85\"/><path class=\"z-cls-3\" d=\"M450,723.08l-12.73-57.86a.27.27,0,1,1,.52-.12L451,722.86a.5.5,0,0,1-1,.22Z\"/><path class=\"z-cls-3\" d=\"M391.91,733c-1-37.61-7.67-74.79-11.86-112.12a.27.27,0,0,1,.53-.06c3.33,28,7.75,55.89,10.44,84,.89,9.37,1.62,18.76,1.81,28.18a.46.46,0,1,1-.92,0Z\"/><path class=\"z-cls-3\" d=\"M322.1,732c-.09-1.28,0-3.09,0-4.38.55-20.86,1.45-43.06,2.4-63.86a.27.27,0,0,1,.53,0c-.77,20.79-1.48,43-1.84,63.86,0,1.18-.05,3.19,0,4.29a.56.56,0,0,1-1.11.07Z\"/><path class=\"z-cls-3\" d=\"M347.9,736.38c2.11-27.65,4.43-69.66,6.21-97.69a.27.27,0,0,1,.29-.25.25.25,0,0,1,.24.28c-.91,16.29-3.23,57.6-4.16,73.33l-.74,12.22c-.26,4.09-.48,8.12-.85,12.26a.5.5,0,1,1-1-.15Z\"/><path class=\"z-cls-3\" d=\"M290.11,726.26c4.08-23,10-56.83,14.05-79.49a.26.26,0,1,1,.52.09c-3.85,22.58-9.47,56.71-13.31,79.61a.64.64,0,0,1-1.26-.21Z\"/><line class=\"z-cls-4\" x1=\"362.93\" y1=\"357.99\" x2=\"362.93\" y2=\"577.85\"/><path class=\"z-cls-4\" d=\"M332.34,358.4c-19,70.2-4.17,144.09,1.12,225.88\"/><path class=\"z-cls-4\" d=\"M393.52,358.4c19,70.2,4.18,144.09-1.12,225.88\"/><path class=\"z-cls-5\" d=\"M359,579.15s3.33,25.82,1.5,30.12\"/><path class=\"z-cls-6\" d=\"M350,579.64s3.3,45.76,4.43,44.5\"/><path class=\"z-cls-5\" d=\"M317.5,594.12S307,640,310.68,642.65\"/><path class=\"z-cls-6\" d=\"M313.38,596.54s-2.1,11.29-2.14,12.58\"/><path class=\"z-cls-6\" d=\"M328.17,588s-2.91,16-1.41,14.72\"/><path class=\"z-cls-5\" d=\"M322.67,591.86s-3.17,40.07-4.66,40.79\"/><path class=\"z-cls-5\" d=\"M341,582.6s-.45,50,1,49\"/><line class=\"z-cls-6\" x1=\"338.51\" y1=\"583.36\" x2=\"337.78\" y2=\"591.5\"/><path class=\"z-cls-6\" d=\"M335.24,590.11s1.13,44.36,0,45.49\"/><path class=\"z-cls-6\" d=\"M345.15,581.63s2.35,16.42,1.71,17.69\"/><path class=\"z-cls-6\" d=\"M354.38,579.49s1.09,13.17.81,14.72\"/><path class=\"z-cls-5\" d=\"M368.83,579.15s-1.25,19.44,0,22.46\"/><path class=\"z-cls-6\" d=\"M380.32,581.63s-1.64,30.71-2.7,29.38\"/><path class=\"z-cls-6\" d=\"M409.94,595.37s9.17,31.13,9.17,44.52\"/><path class=\"z-cls-6\" d=\"M404.05,591.89s.27,36.18-1.15,34.84\"/><path class=\"z-cls-5\" d=\"M397.44,587.43s-2.09,17.29-.65,18.12\"/><path class=\"z-cls-5\" d=\"M388.1,584.45s2.88,45.93,1.45,44.84\"/><line class=\"z-cls-6\" x1=\"393.93\" y1=\"586.02\" x2=\"394.18\" y2=\"594.19\"/><path class=\"z-cls-6\" d=\"M407.78,594.93s1.1,30.6,2.16,31.8\"/><path class=\"z-cls-6\" d=\"M384.79,584.45s-2.3,34.36-1.73,35.68\"/><path class=\"z-cls-6\" d=\"M374.53,579.49s-1.91,9.4-1.71,11\"/><path class=\"z-cls-6\" d=\"M375.64,586.82s-2.64,40.73-4.2,39.9\"/>", "walls": "<path class=\"z-cls-1\" d=\"M415,597.61q-52-39.52-103.59,0\"/><path class=\"z-cls-1\" d=\"M410.39,356.82C445,402.39,443,496.66,414.84,597.61c0,0-30.55-19.76-51.72-19.76s-51.71,19.76-51.71,19.76c-28.14-100.95-31.16-194.79,3.32-240.79Z\"/><path class=\"z-cls-1\" d=\"M309.73,612.43c-14.13,49.24-45.31,67.06-52,103.5,4.46,3.18,23.63,9.38,32.48,11.39l-.5,5.09c8.57,2.34,28.95,8.37,31.94,6.25l.75-6.35c4.81-2.61,19.91-2.12,26.18-.12,0,0-.46,1.41.25,5,1.09,2.89,17,2.2,17,2.2s20.9,0,26.65-.59v-6.43c6.76-1.41,30.85-3.67,33.15-1.45l1.23,4.55c7.46.23,23.35-5.5,24.87-7.33l-.83-4.78c3.66-2,21.93-6.91,23.6-10.34-5.24-37.11-43.19-53.19-58.41-102\"/><path class=\"z-cls-1\" d=\"M311.41,597.61c-14,48.86-46.44,81.77-53,117.93,4.43,3.15,23.4,9.38,32.18,11.38l-.49,5.05c8.5,2.31,28.86,8.33,31.83,6.22l.74-6.3c4.77-2.59,19.83-2.12,26.06-.14a12.46,12.46,0,0,0,.25,5c1.08,2.86,16.89,2.19,16.89,2.19s20.7,0,26.41-.58V732c6.7-1.4,30.76-3.66,33-1.46l1.23,4.51c7.4.22,23.25-5.48,24.76-7.3l-.82-4.74c3.63-2,21.73-6.93,23.38-10.33-5.19-36.82-43.91-66.58-59-115\"/><path class=\"z-cls-1\" d=\"M425.9,734.77c-4.54-52.2-35-129.83-33.5-150.49\"/><path class=\"z-cls-1\" d=\"M297.46,734.77c4.69-53.88,38.33-125.19,36.21-150.52\"/><line class=\"z-cls-1\" x1=\"365.9\" y1=\"739.4\" x2=\"362.93\" y2=\"577.85\"/><line class=\"z-cls-4\" x1=\"362.93\" y1=\"357.99\" x2=\"362.93\" y2=\"577.85\"/><path class=\"z-cls-4\" d=\"M332.34,358.4c-19,70.2-4.17,144.09,1.12,225.88\"/><path class=\"z-cls-4\" d=\"M393.52,358.4c19,70.2,4.18,144.09-1.12,225.88\"/>", "sil": ["M410.39,356.82C445,402.39,443,496.66,414.84,597.61c0,0-30.55-19.76-51.72-19.76s-51.71,19.76-51.71,19.76c-28.14-100.95-31.16-194.79,3.32-240.79Z", "M311.41,597.61c-14,48.86-46.44,81.77-53,117.93,4.43,3.15,23.4,9.38,32.18,11.38l-.49,5.05c8.5,2.31,28.86,8.33,31.83,6.22l.74-6.3c4.77-2.59,19.83-2.12,26.06-.14a12.46,12.46,0,0,0,.25,5c1.08,2.86,16.89,2.19,16.89,2.19s20.7,0,26.41-.58V732c6.7-1.4,30.76-3.66,33-1.46l1.23,4.51c7.4.22,23.25-5.48,24.76-7.3l-.82-4.74c3.63-2,21.73-6.93,23.38-10.33-5.19-36.82-43.91-66.58-59-115"], "box": [250, 348, 232, 400], "parts": [[272, 348, 181, 257], [250, 589, 232, 159]]}, "princess": {"lines": "<path class=\"p-cls-1\" d=\"M452,243.64c-9-22.5-21.13-27.78-21.13-27.78s0,.07,0,.22l-37.38-15.26c1,31.31-2.61,60.8-30,80.75-28.21-20.47-30.95-50.72-27.89-81.38L293,213.82c-37.66,24-37.13,101.62-56.72,175.91,5.08,3.44,20.38,8,36.81,10.95.17-1.68,26.83-99.4,26.49-101.09,3.71,13.2,11.32,56.51,12.27,58.83l98.46-1.49c.71,0,11-53.84,12.92-60.88-.66,2.55,27.1,104.46,27.34,107.08,12.12-1.37,27.61-6.15,35.88-10.14C474.92,337.84,457.81,258.1,452,243.64Z\"/><path class=\"p-cls-2\" d=\"M296.44,236.19s.64,1.91,1,14.66-3.19,30.59-3.19,30.59S301,302.29,304,319.22s7.81,39.2,7.81,39.2l98.46-1.49s5.08-20.75,8-37.68,5.4-25.05,5.4-25.05l2.92-7.64L433,232.47l-2.18-16.39-37.38-15.26c1,31.31-2.61,60.8-30,80.75-28.21-20.47-30.95-50.72-27.89-81.38L293,213.82l3.49,22.37\"/><path class=\"p-cls-3\" d=\"M424.29,264s-19.45,8.65-25,27.65c-2.73,9.44-10.5,66.5-10.5,66.5\"/><path class=\"p-cls-3\" d=\"M300,263.43s20.55,9.19,26.05,28.19c2.73,9.44,10.5,66.5,10.5,66.5\"/><rect class=\"p-cls-4\" x=\"355.62\" y=\"293.93\" width=\"8.61\" height=\"2.41\"/><path class=\"p-cls-5\" d=\"M363.72,300.22a5.29,5.29,0,1,1,5.29-5.28A5.3,5.3,0,0,1,363.72,300.22Z\"/><circle class=\"p-cls-5\" cx=\"363.72\" cy=\"294.94\" r=\"3.75\"/><line class=\"p-cls-4\" x1=\"355.9\" y1=\"295.03\" x2=\"358.26\" y2=\"295.2\"/><rect class=\"p-cls-4\" x=\"355.62\" y=\"320.28\" width=\"8.61\" height=\"2.41\"/><line class=\"p-cls-4\" x1=\"355.9\" y1=\"321.39\" x2=\"359\" y2=\"321.39\"/><path class=\"p-cls-5\" d=\"M363.3,326.8a5.29,5.29,0,1,1,5.29-5.29A5.29,5.29,0,0,1,363.3,326.8Z\"/><circle class=\"p-cls-5\" cx=\"363.3\" cy=\"321.51\" r=\"3.75\"/><rect class=\"p-cls-4\" x=\"355.62\" y=\"346.93\" width=\"8.61\" height=\"2.41\"/><line class=\"p-cls-4\" x1=\"355.9\" y1=\"348.03\" x2=\"359\" y2=\"348.03\"/><path class=\"p-cls-5\" d=\"M363.3,353.37a5.29,5.29,0,1,1,5.29-5.28A5.29,5.29,0,0,1,363.3,353.37Z\"/><circle class=\"p-cls-5\" cx=\"363.3\" cy=\"348.09\" r=\"3.75\"/><path class=\"p-cls-2\" d=\"M372.16,357.59c0-12.95-.49-64.76-.49-69.76\"/><path class=\"p-cls-6\" d=\"M373.65,356.9V286.71s-3.6-2-8.54-5.14\"/><path class=\"p-cls-7\" d=\"M450.52,403.12,423.34,298.47l.24,1.63c-1.19-8.7-.49-25.41,1.08-40.88.75-18,6.24-43.36,6.24-43.36S443,221.14,452,243.64c5.78,14.46,22.89,94.2,34.37,149.35C478.13,397,462.64,401.76,450.52,403.12Z\"/><path class=\"p-cls-3\" d=\"M423.53,276.61s7.05,27.69,17.12,67.46c4.13,16.34,9.5,38.12,14.4,58.11\"/><path class=\"p-cls-8\" d=\"M236.23,389.73c11.11-54.58,27.47-132.54,33.21-146.89,9-22.5,23.51-29,23.51-29s8.16,38.79,7.38,65.37l-.85,21.61L273,400.68C256.61,397.77,241.31,393.17,236.23,389.73Z\"/><path class=\"p-cls-3\" d=\"M300,278.54s-8.93,30.72-19,70.5c-3.79,15-8.67,33.29-13.29,50.34\"/><line class=\"p-cls-2\" x1=\"363.5\" y1=\"281.57\" x2=\"371.67\" y2=\"287.83\"/><path class=\"p-cls-6\" d=\"M413.29,208s6.08,45.67-16.38,74.69c-1.89,2.45-18.34-17.19-20.66-15\"/><path class=\"p-cls-6\" d=\"M313.82,208s-6.06,45.43,16.2,74.46C332,285,348.59,265.74,351,268\"/><path class=\"p-cls-7\" d=\"M330.52,281.58c-18.74-23.09-18.4-60.51-16.63-76.35,7.45-1.32,20.48-8.47,27.4-9.61-2.68,25.22-4.08,51.45,10.4,71C348.09,266.77,336.51,277.56,330.52,281.58Z\"/><path class=\"p-cls-7\" d=\"M396.92,281.58c18.74-23.09,18.4-60.51,16.63-76.35-7.44-1.32-20.47-8.47-27.4-9.61,2.68,25.22,4.08,51.45-10.4,71C379.35,266.77,390.94,277.56,396.92,281.58Z\"/><path class=\"p-cls-7\" d=\"M240.73,661.53s17,7.65,45.16,6.68l.5-5.89c17.43-.43,21.77,2.91,21.77,2.91l0,3.54c17.52,5.28,54.63,5.8,64,3.46l.18-4c6.93-1.66,19.57,5.35,46.37-.76l0-4.26s6.7-2.74,22-1.44l.33,4.77s25.45-3,40.25-5.95l-.72-4.17c7.15-.42,29.6-2.4,41.6-9,0,0-27.75-93.15-63.81-181.41-33.3-81.49-48.57-109.56-48.57-109.56H312.17S286.6,399.16,256.6,482.16c-29.42,81.4-52.72,157.43-53.25,161.62,6,4.28,21.17,8.24,38.41,11.25Z\"/><path class=\"p-cls-4\" d=\"M403.9,471.49c6.39,58.17,10.14,117.26,14.81,196\"/><path class=\"p-drap-shed\" d=\"M413.53,424.19c6.19,30,22,157.63,27.48,242.33\"/><path class=\"p-cls-4\" d=\"M323,470.31C316.16,534,313.31,588,308.12,668.77\"/><path class=\"p-drap-shed\" d=\"M313.31,424.19c-5.19,34.64-21.89,159.31-27.42,244\"/><path class=\"p-drap-shed\" d=\"M410.29,414.45s-10.59-45-21.18-58c0,0,12.18,47.28,14.7,94.57\"/><path class=\"p-drap-shed\" d=\"M316.56,414.45s9.17-45,19.76-58c0,0-16.19,71.27-15.27,94.57\"/><path class=\"p-cls-9\" d=\"M480.46,656s-11.7-58.09-23.34-114.19c-10.43-50.24-17-83.37-12.79-76.58\"/><path class=\"p-cls-9\" d=\"M241.72,655s15.07-67.11,30-127.72c18.09-73.15,25.77-84.77,14.12-73.11\"/><path class=\"p-cls-2\" d=\"M372.16,672.23l0-313.63s0-1.42,0-3.84\"/><line class=\"p-cls-6\" x1=\"373.64\" y1=\"670.63\" x2=\"373.65\" y2=\"356.02\"/>", "walls": "<path class=\"p-cls-1\" d=\"M452,243.64c-9-22.5-21.13-27.78-21.13-27.78s0,.07,0,.22l-37.38-15.26c1,31.31-2.61,60.8-30,80.75-28.21-20.47-30.95-50.72-27.89-81.38L293,213.82c-37.66,24-37.13,101.62-56.72,175.91,5.08,3.44,20.38,8,36.81,10.95.17-1.68,26.83-99.4,26.49-101.09,3.71,13.2,11.32,56.51,12.27,58.83l98.46-1.49c.71,0,11-53.84,12.92-60.88-.66,2.55,27.1,104.46,27.34,107.08,12.12-1.37,27.61-6.15,35.88-10.14C474.92,337.84,457.81,258.1,452,243.64Z\"/><path class=\"p-cls-2\" d=\"M296.44,236.19s.64,1.91,1,14.66-3.19,30.59-3.19,30.59S301,302.29,304,319.22s7.81,39.2,7.81,39.2l98.46-1.49s5.08-20.75,8-37.68,5.4-25.05,5.4-25.05l2.92-7.64L433,232.47l-2.18-16.39-37.38-15.26c1,31.31-2.61,60.8-30,80.75-28.21-20.47-30.95-50.72-27.89-81.38L293,213.82l3.49,22.37\"/><path class=\"p-cls-3\" d=\"M424.29,264s-19.45,8.65-25,27.65c-2.73,9.44-10.5,66.5-10.5,66.5\"/><path class=\"p-cls-3\" d=\"M300,263.43s20.55,9.19,26.05,28.19c2.73,9.44,10.5,66.5,10.5,66.5\"/><rect class=\"p-cls-4\" x=\"355.62\" y=\"293.93\" width=\"8.61\" height=\"2.41\"/><path class=\"p-cls-5\" d=\"M363.72,300.22a5.29,5.29,0,1,1,5.29-5.28A5.3,5.3,0,0,1,363.72,300.22Z\"/><circle class=\"p-cls-5\" cx=\"363.72\" cy=\"294.94\" r=\"3.75\"/><line class=\"p-cls-4\" x1=\"355.9\" y1=\"295.03\" x2=\"358.26\" y2=\"295.2\"/><rect class=\"p-cls-4\" x=\"355.62\" y=\"320.28\" width=\"8.61\" height=\"2.41\"/><line class=\"p-cls-4\" x1=\"355.9\" y1=\"321.39\" x2=\"359\" y2=\"321.39\"/><path class=\"p-cls-5\" d=\"M363.3,326.8a5.29,5.29,0,1,1,5.29-5.29A5.29,5.29,0,0,1,363.3,326.8Z\"/><circle class=\"p-cls-5\" cx=\"363.3\" cy=\"321.51\" r=\"3.75\"/><rect class=\"p-cls-4\" x=\"355.62\" y=\"346.93\" width=\"8.61\" height=\"2.41\"/><line class=\"p-cls-4\" x1=\"355.9\" y1=\"348.03\" x2=\"359\" y2=\"348.03\"/><path class=\"p-cls-5\" d=\"M363.3,353.37a5.29,5.29,0,1,1,5.29-5.28A5.29,5.29,0,0,1,363.3,353.37Z\"/><circle class=\"p-cls-5\" cx=\"363.3\" cy=\"348.09\" r=\"3.75\"/><path class=\"p-cls-2\" d=\"M372.16,357.59c0-12.95-.49-64.76-.49-69.76\"/><path class=\"p-cls-7\" d=\"M450.52,403.12,423.34,298.47l.24,1.63c-1.19-8.7-.49-25.41,1.08-40.88.75-18,6.24-43.36,6.24-43.36S443,221.14,452,243.64c5.78,14.46,22.89,94.2,34.37,149.35C478.13,397,462.64,401.76,450.52,403.12Z\"/><path class=\"p-cls-3\" d=\"M423.53,276.61s7.05,27.69,17.12,67.46c4.13,16.34,9.5,38.12,14.4,58.11\"/><path class=\"p-cls-8\" d=\"M236.23,389.73c11.11-54.58,27.47-132.54,33.21-146.89,9-22.5,23.51-29,23.51-29s8.16,38.79,7.38,65.37l-.85,21.61L273,400.68C256.61,397.77,241.31,393.17,236.23,389.73Z\"/><path class=\"p-cls-3\" d=\"M300,278.54s-8.93,30.72-19,70.5c-3.79,15-8.67,33.29-13.29,50.34\"/><line class=\"p-cls-2\" x1=\"363.5\" y1=\"281.57\" x2=\"371.67\" y2=\"287.83\"/><path class=\"p-cls-7\" d=\"M330.52,281.58c-18.74-23.09-18.4-60.51-16.63-76.35,7.45-1.32,20.48-8.47,27.4-9.61-2.68,25.22-4.08,51.45,10.4,71C348.09,266.77,336.51,277.56,330.52,281.58Z\"/><path class=\"p-cls-7\" d=\"M396.92,281.58c18.74-23.09,18.4-60.51,16.63-76.35-7.44-1.32-20.47-8.47-27.4-9.61,2.68,25.22,4.08,51.45-10.4,71C379.35,266.77,390.94,277.56,396.92,281.58Z\"/><path class=\"p-cls-7\" d=\"M240.73,661.53s17,7.65,45.16,6.68l.5-5.89c17.43-.43,21.77,2.91,21.77,2.91l0,3.54c17.52,5.28,54.63,5.8,64,3.46l.18-4c6.93-1.66,19.57,5.35,46.37-.76l0-4.26s6.7-2.74,22-1.44l.33,4.77s25.45-3,40.25-5.95l-.72-4.17c7.15-.42,29.6-2.4,41.6-9,0,0-27.75-93.15-63.81-181.41-33.3-81.49-48.57-109.56-48.57-109.56H312.17S286.6,399.16,256.6,482.16c-29.42,81.4-52.72,157.43-53.25,161.62,6,4.28,21.17,8.24,38.41,11.25Z\"/><path class=\"p-cls-2\" d=\"M372.16,672.23l0-313.63s0-1.42,0-3.84\"/>", "sil": ["M452,243.64c-9-22.5-21.13-27.78-21.13-27.78s0,.07,0,.22l-37.38-15.26c1,31.31-2.61,60.8-30,80.75-28.21-20.47-30.95-50.72-27.89-81.38L293,213.82c-37.66,24-37.13,101.62-56.72,175.91,5.08,3.44,20.38,8,36.81,10.95.17-1.68,26.83-99.4,26.49-101.09,3.71,13.2,11.32,56.51,12.27,58.83l98.46-1.49c.71,0,11-53.84,12.92-60.88-.66,2.55,27.1,104.46,27.34,107.08,12.12-1.37,27.61-6.15,35.88-10.14C474.92,337.84,457.81,258.1,452,243.64Z", "M330.52,281.58c-18.74-23.09-18.4-60.51-16.63-76.35,7.45-1.32,20.48-8.47,27.4-9.61-2.68,25.22-4.08,51.45,10.4,71C348.09,266.77,336.51,277.56,330.52,281.58Z", "M396.92,281.58c18.74-23.09,18.4-60.51,16.63-76.35-7.44-1.32-20.47-8.47-27.4-9.61,2.68,25.22,4.08,51.45-10.4,71C379.35,266.77,390.94,277.56,396.92,281.58Z", "M240.73,661.53s17,7.65,45.16,6.68l.5-5.89c17.43-.43,21.77,2.91,21.77,2.91l0,3.54c17.52,5.28,54.63,5.8,64,3.46l.18-4c6.93-1.66,19.57,5.35,46.37-.76l0-4.26s6.7-2.74,22-1.44l.33,4.77s25.45-3,40.25-5.95l-.72-4.17c7.15-.42,29.6-2.4,41.6-9,0,0-27.75-93.15-63.81-181.41-33.3-81.49-48.57-109.56-48.57-109.56H312.17S286.6,399.16,256.6,482.16c-29.42,81.4-52.72,157.43-53.25,161.62,6,4.28,21.17,8.24,38.41,11.25Z"], "box": [195, 187, 335, 495], "parts": [[228, 192, 267, 219], [303, 187, 56, 102], [367, 187, 56, 102], [195, 348, 335, 335]]}}}, "curvier": {"vb": "0 0 726.93 938.64", "css": ".cls-1,.cls-10,.cls-12,.cls-2,.cls-3,.cls-4,.cls-5,.cls-7,.cls-9{fill:none;}.cls-1,.cls-2,.cls-3,.cls-4,.cls-5,.cls-6,.cls-7,.cls-8,.cls-9{stroke:#6d6e71;}.cls-1,.cls-11,.cls-12,.cls-13,.cls-5,.cls-7,.cls-8,.cls-9{stroke-linejoin:round;}.cls-1,.cls-2,.cls-5,.cls-6{stroke-width:0.85px;}.cls-10,.cls-2,.cls-3,.cls-4,.cls-6{stroke-miterlimit:10;}.cls-3,.cls-7{stroke-width:0.5px;}.cls-4,.cls-9{stroke-width:0.25px;}.cls-11,.cls-12,.cls-13,.cls-5,.cls-7,.cls-8,.cls-9{stroke-linecap:round;}.cls-11,.cls-6,.cls-8{fill:#fff;}.cls-8{stroke-width:0.75px;}.cls-10,.cls-11,.cls-12{stroke:#231f20;}.cls-11,.cls-12{stroke-width:1.15px;}.cls-13{fill:#f1f2f2;stroke:#221f1f;stroke-width:0.86px;}.b-cls-1,.b-cls-2{fill:#fff;stroke:#231f20;}.b-cls-1,.b-cls-3{stroke-linecap:round;stroke-linejoin:round;}.b-cls-1{stroke-width:1.15px;}.b-cls-2{stroke-miterlimit:10;}.b-cls-3{fill:#f1f2f2;stroke:#221f1f;stroke-width:0.86px;}.s-cls-1{fill:#fff;stroke-miterlimit:10;}.s-cls-1,.s-cls-2{stroke:#231f20;}.s-cls-2{fill:#fff;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.15px;}.z-cls-1,.z-cls-2,.z-cls-7{fill:#fff;}.z-cls-1,.z-cls-2,.z-cls-5{stroke:#231f20;}.z-cls-1{stroke-miterlimit:10;}.z-cls-2,.z-cls-5,.z-cls-6,.z-cls-7{stroke-linecap:round;stroke-linejoin:round;}.z-cls-2,.z-cls-5{stroke-width:1.27px;}.z-cls-3{fill:#dedede;}.z-cls-4{fill:#414042;}.z-cls-5{fill:none;}.z-cls-6{fill:#e6e6e5;}.z-cls-6,.z-cls-7{stroke:#414042;stroke-width:0.64px;}.p-cls-1,.p-cls-2,.p-cls-5,.p-cls-7,.p-cls-8{fill:#fff;}.p-cls-10,.p-cls-2,.p-cls-3,.p-cls-4,.p-cls-5,.p-cls-8,.p-cls-9{stroke:#221f1f;}.p-cls-10,.p-cls-2,.p-cls-3,.p-cls-4,.p-cls-5,.p-cls-6,.p-cls-7,.p-cls-8,.p-cls-9{stroke-linecap:round;}.p-cls-2,.p-cls-3,.p-cls-7,.p-cls-8{stroke-width:1.09px;}.p-cls-3,.p-cls-4,.p-cls-6{fill:none;}.p-cls-3,.p-cls-4,.p-cls-5,.p-cls-6,.p-cls-7,.p-cls-8,.p-cls-9{stroke-linejoin:round;}.p-cls-10,.p-cls-4,.p-cls-5,.p-cls-9{stroke-width:0.81px;}.p-cls-6,.p-cls-7{stroke:#231f20;}.p-cls-6{stroke-width:3.26px;opacity:0.21;}.p-cls-10,.p-cls-9{fill:#dedede;}", "body": "<g><path class=\"cls-1\" d=\"M339.23,168.69A27.7,27.7,0,0,0,340,166c-.25,2.12-3.1,22.49-7.86,24.35-4.6,1.8-16.19,6-16.19,6-13.88,4-30.8,8.05-40.36,10.56-4.82,1.26-6.75,3.34-6.75,3.34s-11,3.93-22.74,56.95c-4.73,21.28,2.35,72,2.35,72S234.3,382.33,231.16,398,223,446.12,223,446.12s-11.64,9-15.24,11.88-30.82,13.69-30,14.86,14-2.84,14-2.84-6.8,6.85-7.2,7.85-5.61,10.52-4.2,10.36,5.8-2.84,5.8-2.84l-4.2,6.18a32.66,32.66,0,0,0,5.6-1.34c1.4-.67-.6,5-.6,5s5.4-.5,7.2-5.18,1.6-7.85,3.8-9.68,26-15,26-15l2,6.18s-2.6,6.51-3.2,8.35-3.6,5.67-3,8.35,1.6,3.34,1.6,3.34,3.8-6,5.4-8,8-11.52,9.2-13.19,6.41-8,6.81-11-1-8.64-1-8.64,16.25-30.39,24.09-56.57,12.36-45.29,12.36-45.29,6.78-22.27,9.14-32.74.42-15.16.42-15.16a39.31,39.31,0,0,1,5.26,29.35c-3.53,17.35-18.75,43.72-23,64.3s-3.88,30.37-4.22,32.17c-5.93,30.67,33,127.65,49.16,176,0,0-21.85,38.9-12.34,80.37,6.34,27.6,10.74,49.33,12.81,61.95\"/><path class=\"cls-1\" d=\"M435.39,299.71c.32,2.28,4.19,7,6,15,2.35,10.48,8.62,30.77,8.62,30.77s3.14,9.16,11,35.34,24.1,56.82,24.1,56.82-1.36,5.63-1,8.64,5.6,9.35,6.8,11,7.61,11.19,9.21,13.19,5.4,8,5.4,8,1-.67,1.6-3.34-2.4-6.52-3-8.35-3.2-8.35-3.2-8.35l2-6.18s23.81,13.19,26,15,2,5,3.81,9.68,7.2,5.18,7.2,5.18-2-5.68-.6-5a32.66,32.66,0,0,0,5.6,1.34l-4.2-6.18s4.4,2.67,5.8,2.84-3.8-9.35-4.2-10.36-7.2-7.84-7.2-7.84,13.2,4,14,2.83-26.41-12-30-14.86-18.76-20.73-18.76-20.73-1.82-19.28-5-35-14.51-52.47-14.51-52.47S483,284.26,478.23,263C466.46,210,455.48,206,455.48,206s-10.19-5.24-33.72-9.17c-13.33-2.22-29.94-.57-36.5-7.65-5-5.42-1.49-19.42-2-23.38\"/><path class=\"cls-2\" d=\"M407.78,606.16c11.62-22.14,41.69-87.27,50.53-131.84,7.56-38.12,7.81-64.41,2.24-86.93-9.23-37.29-31.21-52.84-30.43-64.62s1.52-19.31,1.52-19.31\"/><path class=\"cls-2\" d=\"M385.28,724.78c3.65-9.62,6.87-19.12,10.23-31,8.46-30,7.51-62.15,12.27-81.12s6.12-17.43,6.12-17.43\"/><path class=\"cls-2\" d=\"M265.59,427.63s10.25-9.07,35.59-6,47.9,14,57.93,21.9S371.79,455,371.79,455s2.94.49,4.56-1.05c5.92-5.62,20.19-20.57,40.53-29.39,16.16-7,38.54-7.93,42.76-9.25s3.92-.5,3.92-.5\"/><path class=\"cls-3\" d=\"M293.13,330.29s24,7,74.65,4.38,63.48-5.56,63.48-5.56\"/><path class=\"cls-3\" d=\"M290.16,339.07s27.46,6.61,78.14,4,67.06-6.61,67.06-6.61\"/><path class=\"cls-3\" d=\"M288,300.7c-2.63-2-19.38-14.79-3.44-37.19,14.9-20.95,37.57-13.38,42.75-11.29,11.88,4.79,32.18,28.94,32.18,28.94l8.06-.38s21-21.27,28.43-26.58c2.6-1.88,10.52-7.61,24-6.78,20.88,1.3,26,18.13,25.63,33.07-.31,11.25-13.62,22.63-13.62,22.63a50.66,50.66,0,0,1-23.86,6.47A80.29,80.29,0,0,1,381,304.78a89.75,89.75,0,0,0-9.92-3.22l-14.38.3a26.39,26.39,0,0,1-7.15,3.22c-11.38,3.19-21.8,5.14-36.53,4.17C299,308.32,290.77,302.78,288,300.7Z\"/><path class=\"cls-3\" d=\"M359.88,281.16s.51,10.55-.62,15.74c-.87,4-2.64,5.12-2.64,5.12\"/><path class=\"cls-3\" d=\"M367.58,280.78s.91,18.3,4.48,21\"/><path class=\"cls-3\" d=\"M280.31,271c2.13-4.22,6.64-8.67,11.19-12.2,10.11-7.85,25.32-7.64,35-3.06S360,285.66,360,285.66\"/><path class=\"cls-3\" d=\"M444.87,269.62c-1.48-4-5.82-16.6-24.38-18.44-8.72-.87-15.94.93-22.09,5.31-5,3.59-30.63,29-30.63,29\"/><line class=\"cls-3\" x1=\"358.91\" y1=\"298.58\" x2=\"369.91\" y2=\"298.2\"/><path class=\"cls-4\" d=\"M367.93,285.45l-8.89.36s-54.65,3.76-59.16,3.39c-4.77-.38-21.62-4.55-22-7.32\"/><path class=\"cls-3\" d=\"M362,281c1.82-4.11-1-8.47-2.18-12.7\"/><path class=\"cls-3\" d=\"M365.88,280.9c-3.56-2,.07-11.93.27-13.19\"/><path class=\"cls-3\" d=\"M313,342.16S272.11,381,271.29,391.25\"/><path class=\"cls-3\" d=\"M410.15,339.85s39.94,18.86,46.48,35.22\"/><path class=\"cls-2\" d=\"M372.67,454.54c1.36,1.59,4.32,11.37,4.78,14.65,2.26,16,1.71,16.52,3.82,32.49,1.64,12.39,2.33,34.06,3.19,46.51.5,7.24,1.61,20,1.91,27.07.51,11.9,1,31.07-4.33,37.87-8.52,10.85-8.52,16.09-8.52,16.09\"/><path class=\"cls-4\" d=\"M353,640.76a264.51,264.51,0,0,0-11.84,56.17\"/><path class=\"cls-2\" d=\"M353.56,717.18c-1.87,9.51-10.2,37.77-11,46.21-.33,3.59-3.52,8.8-4.63,13-3.8,14.46-13,44.29-13,44.29s-11.45,21.54-28.79,4.65c-2-2-9.34-8-8.26-11.35,3.95-12.38,23-41.15,23-42-.12-3.77,1.19-8.51,4.26-10.83\"/><path class=\"cls-2\" d=\"M366.86,790.09c-.31-3.75-.37-5.43.95-10.69,4.19-16.7,25.47-78.1,25.65-79.16\"/><path class=\"cls-2\" d=\"M290.79,806.51s-10.6,15.54-11.21,19.93.18,33.69,4.13,35,18.53-7.17,22.18-9.23,8.44-8.82,11.78-15.52,8.49-17.43,8.49-17.43c.23-1.67,10.54-37.7,10.54-37.7\"/><path class=\"cls-5\" d=\"M374.12,829.34c2.14,7.66-5.21,13.62-5.21,13.62s.43,2.58-5.34,3.37-17.14,1.3-18.49,1.3-1.4-17.4-3.13-23.76c-3-4.13-3.27-27.74-3.27-27.74s.25-.26,0-3.29c-.3-3.59-.64-8.21,1.94-19.88.71-3.22,4.95-29.7,11.95-53,6.5-21.65,15.73-39.93,17.83-49.51,4.34-19.87,4.31-45.23,4.31-45.23\"/><path class=\"cls-6\" d=\"M315.09,761.83s1.21-1.92,1-6.65-1.19-14.49-1.19-14.49\"/><path class=\"cls-2\" d=\"M376.08,620.48c-8.51,2.79-5.49,6.58-14.32,5.11\"/><path class=\"cls-2\" d=\"M409.86,601.06a26,26,0,0,1-16.38,15.39\"/><path class=\"cls-2\" d=\"M327.9,604.17a58,58,0,0,0,12.21,15.48\"/><path class=\"cls-6\" d=\"M309.87,847.31c.64-1.93-4.25-17.68-12-19s-18.47,2.57-18.47,2.57,1.29,26.63,6,27.49S309.87,847.31,309.87,847.31Z\"/><path class=\"cls-2\" d=\"M352.9,718c-3.37,13.48-13.18,54.64-14.76,63-.67,3.54.95,9.43.84,13.78-.37,15,.17,46.15.17,46.15s5,23.88,26.36,12.46c2.48-1.32,11.19-5.06,11.09-8.61-.36-13-10.72-45.93-10.47-46.72,1.17-3.59,1.23-8.51-1.08-11.58\"/><path class=\"cls-2\" d=\"M375.91,836.77s5.86,17.87,5.23,22.25-9.27,31.68-13.42,31.82-16.07-11.39-19-14.38-5.66-10.82-7-18.18c-.93-5.07-2.15-12.21-2.82-16.17\"/><path class=\"cls-6\" d=\"M346.25,870.67c-.08-2,9-15.8,16.78-14.9s17,7.61,17,7.61-8.63,25.22-13.4,24.73S346.25,870.67,346.25,870.67Z\"/><path class=\"cls-6\" d=\"M279.37,825.43s.48-4.07,2.27-6.34l1.79-2.28s12.21,7.65,21,12.53a81.35,81.35,0,0,1,13.83,9.43l-3.9,5.05s-8-12.69-14.65-15.13S280.67,824.46,279.37,825.43Z\"/><path class=\"cls-6\" d=\"M343.4,866.64s-2.31-3.38-2.47-6.28l-.15-2.89s14.21-2.3,24-4.42a81.45,81.45,0,0,1,16.62-2l.39,6.37s-14.36-4.29-21-1.73S343.74,865,343.4,866.64Z\"/><path class=\"cls-7\" d=\"M303.58,851.28s-4.83,2.19-7.24,1c-1.77-.89-2-3.4-2-3.4s-3.37-.16-3.8-1-1.66-.77-2-1.34a12.54,12.54,0,0,0-2.18-1.83,6.4,6.4,0,0,1-3.28-2.76c-1-2-2.93-3.9-2.93-5.44\"/><path class=\"cls-7\" d=\"M349.45,874.11s3.37,4.1,6.07,4.08c2,0,3.27-2.18,3.27-2.18s3.09,1.34,3.83.8,1.83,0,2.39-.32a12.19,12.19,0,0,1,2.76-.68,6.44,6.44,0,0,0,4.17-1c1.74-1.32,4.35-2.21,5-3.58\"/><path class=\"cls-8\" d=\"M355.89,855.13a2,2,0,0,1,1.86,1.14,2.48,2.48,0,0,1,.1,1.4l6.81-1.7s-.45-.21-.23-1.3a6.23,6.23,0,0,1,.67-1.82,19.86,19.86,0,0,0-5.17.6A15,15,0,0,0,355.89,855.13Z\"/><path class=\"cls-8\" d=\"M297.63,825.17a2,2,0,0,1,.55,2.11,2.46,2.46,0,0,1-.9,1.08l6.08,3.5s-.17-.46.74-1.09a6,6,0,0,1,1.75-.85,20.24,20.24,0,0,0-4.14-3.16A15.21,15.21,0,0,0,297.63,825.17Z\"/><polygon class=\"cls-8\" points=\"370.23 787.6 368.21 775.75 367.17 782.14 367.77 787.78 369.92 789.62 370.23 787.6\"/><polygon class=\"cls-8\" points=\"309.32 765.6 316.57 756.02 314.55 762.17 311.41 766.9 308.65 767.53 309.32 765.6\"/><path class=\"cls-5\" d=\"M339,169.88s-17.93,10.51-28-2.65c-6.78-8.86-1.81-13.78-.48-17,2.54-6.24,5.56-8.64,4.2-10s-6.2-3.14,2.52-21.49c3.36-7.09-6.63-8.58-3.37-13.46a117.23,117.23,0,0,1,9.3-12.32s-3.06-16.2,13.83-23.4c1.9-.81.61,1.07,2,0,12.71-9.53,23.87-13.73,38.62-6.1C394.21,72,407.83,77.32,406.47,90.8s4,17.92,9.4,27.68,6.4,17.38,3.67,23.19-2.49.33,1.59,7.29-1.58,9.42-5.78,12.56c-9,6.71-4.57,7.09-14.56,10.83-10.42,3.9-11.73.85-17.72-1.24a13,13,0,0,1,2.88-9.68c3.71-4.33,10.52-13.4,9.9-18.55\"/><path class=\"cls-5\" d=\"M340.3,170.16s-12.42-9.94-13.53-15.14a48.08,48.08,0,0,1-1-8.7c-.17-4.28,2-21.54,2.58-23.51,1.11-3.79,1.84-3.46,3.51-17.17A15,15,0,0,1,338.49,95s2.72-4.28,9.56-3.83,10,.89,13.14.89,26.29-1.79,28.92,1.35-8.41,8.52-6.31,17\"/><path class=\"cls-9\" d=\"M311.31,148.94s11.05-6.83,12.2-13.33\"/><path class=\"cls-9\" d=\"M417.45,142.24s-1.19,8.26-5.69,11.25-13.91,1.37-16.39,4.44c-11.44,14.14,7.79,7.57,8.94,2.69\"/><path class=\"cls-7\" d=\"M325.94,144.82s-17.48,11.65-6.81,14.91\"/><path class=\"cls-9\" d=\"M363.71,92.18c-4.25-1.84-7.39-5.61-6.68-9.63s4.7-7.46,9.4-8.13\"/><path class=\"cls-7\" d=\"M333.68,98.92c-1.09-1.39-3-2.06-4.87-2.68S325,94.9,324,93.47s-1.88-8.5,0-8.87\"/><path class=\"cls-7\" d=\"M343,91.36A15.32,15.32,0,0,1,341.58,70\"/><path class=\"cls-7\" d=\"M352.29,91.09a5.75,5.75,0,0,1-2.66-5.79\"/><path class=\"cls-7\" d=\"M357.88,69c9.08-11.72,34.88,3,42.27,18.35\"/><path class=\"cls-7\" d=\"M405.81,90.44c3.44,2.56-7,4.59-11.11,6.29-6.15,2.55-11,8-10.6,13.79.31,4.65,3.57,11.11,7.06,14.68,7.89,8.07,26.82,1.35,26.29,17.94\"/><path class=\"cls-7\" d=\"M367.87,91.66a3.29,3.29,0,0,1-2.46-2,3.93,3.93,0,0,1,.17-3,3.26,3.26,0,0,1,1.81-1.85\"/><path class=\"cls-9\" d=\"M379,91.29c.77-2.5,3.17-4.47,5.94-5.51a22.45,22.45,0,0,1,8.92-1.11,11.43,11.43,0,0,1,4.45.88,3.52,3.52,0,0,1,2.26,3.18,4.08,4.08,0,0,1-2.41,2.87c-1.21.64-2.59,1-3.85,1.6-3.14,1.44-5.29,4-7.34,6.49a11.75,11.75,0,0,0-1.74,2.51,9.13,9.13,0,0,0-.7,2.75,36,36,0,0,0-.27,7.11\"/><path class=\"cls-9\" d=\"M348.37,91.38c-3-4.17-2.67-9.48-1.16-14.18a21.68,21.68,0,0,1,3-6.25A24.77,24.77,0,0,1,356,65.47a24,24,0,0,1,7.88-3.88,14.39,14.39,0,0,1,8.95.38\"/><path class=\"cls-7\" d=\"M337.85,69.41a16.91,16.91,0,0,0-3.48,13.5,3.53,3.53,0,0,0,1.62,2.7\"/><path class=\"cls-7\" d=\"M388.65,122.93s-4.16,6.12,3.4,15.46,16.62,10.63,7.17,13.21\"/><path class=\"cls-9\" d=\"M409.58,164.45c1.51-2.21,3.05-4.93,1.63-7.19a4.91,4.91,0,0,0-5.12-1.84\"/><path class=\"cls-9\" d=\"M401.78,152.34a13.93,13.93,0,0,0-9.5,2.47,10.06,10.06,0,0,0-4.26,7.65,6.39,6.39,0,0,0,2.2,5.27c1.93,1.56,4.82,1.86,7.47,1.75\"/><path class=\"cls-9\" d=\"M405.27,95.55a18.74,18.74,0,0,0-5.73,7.82,9.77,9.77,0,0,0,1.15,9,14.45,14.45,0,0,0,3.94,3.49c3.32,2.16,7.14,3.69,10.58,5.7s4.23,5.78,5.35,9.21\"/><path class=\"cls-9\" d=\"M330.56,112.58a4,4,0,0,0-3.38-1,19.15,19.15,0,0,0-3.59.94,8.54,8.54,0,0,1-5.42.16c-1.68-.66-5.36-4.52-4.31-5.82\"/><path class=\"cls-4\" d=\"M368,285.56s57.42,2.72,63,2.41,14.05-4.49,14.6-7.48\"/><path class=\"cls-2\" d=\"M540.14,472.14c-1.18-1-7.93-12.06-11.14-13.89\"/><path class=\"cls-2\" d=\"M530.28,468.15l4.9,6.08a8.36,8.36,0,0,0,4.19,2.82\"/><path class=\"cls-2\" d=\"M186.79,485.22c1.17-1,7.93-12.06,11.14-13.89\"/><path class=\"cls-2\" d=\"M196.65,481.23l-4.9,6.08a8.36,8.36,0,0,1-4.19,2.82\"/></g>", "pieces": {"bodice": {"lines": "<path class=\"b-cls-1\" d=\"M421.54,220.46l24-19.8c7,.45,14.91,4.51,17.9,10,6.14,11.2,17.45,39,22.54,54,.32.95-27.83,8.62-40.08,11.92\"/><path class=\"b-cls-1\" d=\"M305.39,220.46l-24-19.8c-7,.45-14.9,4.51-17.89,10-6.14,11.2-17.45,39-22.54,54-.3.87,23.49,7.44,36.85,11l.24.07\"/><path class=\"b-cls-2\" d=\"M421.54,220.46l-58.08,39.08-58.07-39.08c-53.62,61.42-12.8,96.78-11.58,111.59H433.12c.74-9,13.27-29.34,12.66-55.43C445.39,259.79,439.54,240.57,421.54,220.46Z\"/><line class=\"b-cls-1\" x1=\"324.75\" y1=\"292.6\" x2=\"331.01\" y2=\"332.05\"/><line class=\"b-cls-1\" x1=\"403.95\" y1=\"291.28\" x2=\"398.38\" y2=\"332.05\"/><line class=\"b-cls-1\" x1=\"420.4\" y1=\"278.47\" x2=\"445\" y2=\"289.94\"/><line class=\"b-cls-1\" x1=\"303.8\" y1=\"279.1\" x2=\"278.57\" y2=\"289.23\"/><path class=\"b-cls-3\" d=\"M440.45,239.37c-1.22-.36-2.08,1-2.67,3.45\"/><path class=\"b-cls-3\" d=\"M284.53,239.37c1.37-.41,2.4,1.41,3.18,4.37\"/>", "walls": "<path class=\"b-cls-1\" d=\"M421.54,220.46l24-19.8c7,.45,14.91,4.51,17.9,10,6.14,11.2,17.45,39,22.54,54,.32.95-27.83,8.62-40.08,11.92\"/><path class=\"b-cls-1\" d=\"M305.39,220.46l-24-19.8c-7,.45-14.9,4.51-17.89,10-6.14,11.2-17.45,39-22.54,54-.3.87,23.49,7.44,36.85,11l.24.07\"/><path class=\"b-cls-2\" d=\"M421.54,220.46l-58.08,39.08-58.07-39.08c-53.62,61.42-12.8,96.78-11.58,111.59H433.12c.74-9,13.27-29.34,12.66-55.43C445.39,259.79,439.54,240.57,421.54,220.46Z\"/>", "sil": ["M421.54,220.46l24-19.8c7,.45,14.91,4.51,17.9,10,6.14,11.2,17.45,39,22.54,54,.32.95-27.83,8.62-40.08,11.92", "M305.39,220.46l-24-19.8c-7,.45-14.9,4.51-17.89,10-6.14,11.2-17.45,39-22.54,54-.3.87,23.49,7.44,36.85,11l.24.07", "M421.54,220.46l-58.08,39.08-58.07-39.08c-53.62,61.42-12.8,96.78-11.58,111.59H433.12c.74-9,13.27-29.34,12.66-55.43C445.39,259.79,439.54,240.57,421.54,220.46Z"], "box": [232, 192, 262, 148], "parts": [[413, 192, 81, 92], [232, 192, 81, 92], [243, 212, 211, 128]]}, "skirt": {"lines": "<path class=\"s-cls-1\" d=\"M293.81,332.05C242.5,375.87,200.74,488.8,149.39,588.41c0,0,29.4,21.25,47.34,21.52l1.56-3.44,53.48,13.35-1.14,6.42a355.94,355.94,0,0,0,55.19,8l1-5,41.88,2.43.24,3.82c20.13.55,42.11-.21,65.09-1.68l-.28-3.08,42.83-4.92,1,5.49a245.43,245.43,0,0,0,41.76-11.1l-2-5.83,33.05-6.51,1.6,2.42c17.94-.27,45.47-21.94,45.47-21.94-51.34-99.61-93.1-212.54-144.41-256.36Z\"/><path class=\"s-cls-2\" d=\"M251.77,619.84c15.47-83.07,46-220.08,49.4-219.41\"/><line class=\"s-cls-2\" x1=\"306.86\" y1=\"627.29\" x2=\"348.98\" y2=\"393.1\"/><line class=\"s-cls-2\" x1=\"348.98\" y1=\"627.29\" x2=\"359.87\" y2=\"407.46\"/><line class=\"s-cls-2\" x1=\"413.62\" y1=\"629\" x2=\"388.73\" y2=\"393.1\"/><line class=\"s-cls-2\" x1=\"456.2\" y1=\"623.63\" x2=\"414.57\" y2=\"401.65\"/><line class=\"s-cls-2\" x1=\"497.41\" y1=\"614.44\" x2=\"425.84\" y2=\"390.71\"/><path class=\"s-cls-2\" d=\"M530.46,606c-21.05-61.62-49.42-130.81-82-204.37\"/><path class=\"s-cls-2\" d=\"M198.29,606C217.63,540.3,245,472.94,278.57,404.27\"/>", "walls": "<path class=\"s-cls-1\" d=\"M293.81,332.05C242.5,375.87,200.74,488.8,149.39,588.41c0,0,29.4,21.25,47.34,21.52l1.56-3.44,53.48,13.35-1.14,6.42a355.94,355.94,0,0,0,55.19,8l1-5,41.88,2.43.24,3.82c20.13.55,42.11-.21,65.09-1.68l-.28-3.08,42.83-4.92,1,5.49a245.43,245.43,0,0,0,41.76-11.1l-2-5.83,33.05-6.51,1.6,2.42c17.94-.27,45.47-21.94,45.47-21.94-51.34-99.61-93.1-212.54-144.41-256.36Z\"/>", "sil": ["M293.81,332.05C242.5,375.87,200.74,488.8,149.39,588.41c0,0,29.4,21.25,47.34,21.52l1.56-3.44,53.48,13.35-1.14,6.42a355.94,355.94,0,0,0,55.19,8l1-5,41.88,2.43.24,3.82c20.13.55,42.11-.21,65.09-1.68l-.28-3.08,42.83-4.92,1,5.49a245.43,245.43,0,0,0,41.76-11.1l-2-5.83,33.05-6.51,1.6,2.42c17.94-.27,45.47-21.94,45.47-21.94-51.34-99.61-93.1-212.54-144.41-256.36Z"], "box": [141, 323, 445, 321], "parts": [[141, 323, 445, 321]]}, "zelda": {"lines": "<path class=\"z-cls-2\" d=\"M438.45,573q-74.24-39.53-148,0\"/><path class=\"z-cls-1\" d=\"M433,332.19C478.3,383.38,478.42,472,438.23,573c0,0-43.65-19.76-73.89-19.76S290.46,573,290.46,573C250.27,472,253.69,391.25,292.94,332.19Z\"/><path class=\"z-cls-2\" d=\"M288.07,587.79c-20.19,49.24-64.74,67.06-74.22,103.5,6.37,3.18,33.76,9.38,46.4,11.4l-.71,5.09c12.24,2.33,41.36,8.37,45.63,6.25l1.07-6.36c6.87-2.61,28.43-2.12,37.4-.12,0,0-.66,1.41.36,5,1.55,2.89,24.31,2.2,24.31,2.2s29.86,0,38.07-.59v-6.42c9.65-1.42,44.08-3.67,47.36-1.45l1.76,4.55c10.66.22,33.36-5.51,35.53-7.34l-1.18-4.78c5.22-2,31.32-6.91,33.7-10.33-7.48-37.11-61.69-53.2-83.43-102\"/><path class=\"z-cls-1\" d=\"M290.46,573c-20,48.86-66.33,81.77-75.73,117.93,6.31,3.16,33.42,9.38,46,11.38l-.7,5.05c12.14,2.32,41.23,8.33,45.47,6.23l1.07-6.31c6.81-2.59,28.32-2.12,37.22-.13a8.76,8.76,0,0,0,.36,5c1.54,2.86,24.13,2.19,24.13,2.19s29.57.05,37.73-.58v-6.38c9.57-1.4,43.94-3.66,47.19-1.46l1.77,4.51c10.57.22,33.21-5.48,35.37-7.3l-1.17-4.74c5.18-2,31-6.93,33.41-10.32-7.43-36.83-62.74-66.59-84.31-115\"/><path class=\"z-cls-2\" d=\"M454,710.13c-6.47-52.2-50-129.82-47.85-150.48\"/><path class=\"z-cls-2\" d=\"M270.53,710.13c6.71-53.88,54.77-125.19,51.73-150.52\"/><line class=\"z-cls-2\" x1=\"368.31\" y1=\"714.76\" x2=\"364.07\" y2=\"553.21\"/><path class=\"z-cls-4\" d=\"M488.55,698.52l-18.24-57.9a.31.31,0,1,1,.6-.19l18.79,57.72a.6.6,0,0,1-1.15.37Z\"/><path class=\"z-cls-4\" d=\"M405.58,708.38c-1.51-37.85-11-74.81-17-112.09a.32.32,0,0,1,.27-.37.32.32,0,0,1,.36.26c4.75,28,11,55.72,14.87,83.87a267.75,267.75,0,0,1,2.58,28.31.55.55,0,1,1-1.09,0Z\"/><path class=\"z-cls-4\" d=\"M305.88,707.44a41.47,41.47,0,0,1,0-4.46c.76-20.87,2-43.07,3.36-63.87a.32.32,0,0,1,.34-.29.31.31,0,0,1,.3.33c-1.14,21.52-2.27,44.4-2.73,66,0,.6,0,1.62,0,2.22a.65.65,0,0,1-1.3.09Z\"/><path class=\"z-cls-4\" d=\"M342.72,711.68c3-27.6,6.29-69.63,8.82-97.64a.3.3,0,0,1,.34-.29.32.32,0,0,1,.29.34c-1.84,22.67-5.09,63.33-7.06,85.58-.35,3.63-.72,8.66-1.22,12.28a.6.6,0,1,1-1.17-.27Z\"/><path class=\"z-cls-4\" d=\"M260.19,701.56c5.8-23,14.18-56.82,20-79.46a.33.33,0,0,1,.39-.23.32.32,0,0,1,.23.39c-5.53,22.58-13.59,56.74-19.11,79.64a.76.76,0,0,1-1.49-.34Z\"/><line class=\"z-cls-5\" x1=\"364.07\" y1=\"333.36\" x2=\"364.07\" y2=\"553.21\"/><path class=\"z-cls-5\" d=\"M320.37,333.76c-27.08,70.21-6,144.1,1.6,225.89\"/><path class=\"z-cls-5\" d=\"M407.77,333.76c27.09,70.21,6,144.1-1.6,225.89\"/><path class=\"z-cls-6\" d=\"M358.38,554.51s4.75,25.83,2.14,30.12\"/><path class=\"z-cls-7\" d=\"M345.52,555s4.72,45.76,6.33,44.5\"/><path class=\"z-cls-6\" d=\"M299.17,569.48s-15,45.87-9.75,48.53\"/><path class=\"z-cls-7\" d=\"M293.29,571.91s-3,11.28-3.07,12.58\"/><path class=\"z-cls-7\" d=\"M314.4,563.34s-4.14,16-2,14.72\"/><path class=\"z-cls-6\" d=\"M306.56,567.22S302,607.29,299.9,608\"/><path class=\"z-cls-6\" d=\"M332.8,558s-.65,50,1.47,49\"/><line class=\"z-cls-7\" x1=\"329.18\" y1=\"558.73\" x2=\"328.14\" y2=\"566.86\"/><path class=\"z-cls-7\" d=\"M324.51,565.47s1.61,44.36,0,45.49\"/><path class=\"z-cls-7\" d=\"M338.67,557s3.36,16.42,2.43,17.69\"/><path class=\"z-cls-7\" d=\"M351.85,554.85S353.42,568,353,569.57\"/><path class=\"z-cls-6\" d=\"M372.49,554.51s-1.78,19.44,0,22.47\"/><path class=\"z-cls-7\" d=\"M388.91,557s-2.35,30.71-3.85,29.38\"/><path class=\"z-cls-7\" d=\"M431.22,570.74s13.11,31.12,13.11,44.52\"/><path class=\"z-cls-7\" d=\"M422.81,567.25s.39,36.19-1.64,34.84\"/><path class=\"z-cls-6\" d=\"M413.38,562.8s-3,17.29-.95,18.11\"/><path class=\"z-cls-6\" d=\"M400,559.81s4.12,45.93,2.08,44.85\"/><line class=\"z-cls-7\" x1=\"408.36\" y1=\"561.38\" x2=\"408.71\" y2=\"569.55\"/><path class=\"z-cls-7\" d=\"M428.14,570.29s1.57,30.6,3.08,31.8\"/><path class=\"z-cls-7\" d=\"M395.29,559.81s-3.28,34.37-2.47,35.68\"/><path class=\"z-cls-7\" d=\"M380.63,554.85s-2.71,9.4-2.43,11\"/><path class=\"z-cls-7\" d=\"M382.23,562.18s-3.78,40.73-6,39.9\"/>", "walls": "<path class=\"z-cls-2\" d=\"M438.45,573q-74.24-39.53-148,0\"/><path class=\"z-cls-1\" d=\"M433,332.19C478.3,383.38,478.42,472,438.23,573c0,0-43.65-19.76-73.89-19.76S290.46,573,290.46,573C250.27,472,253.69,391.25,292.94,332.19Z\"/><path class=\"z-cls-2\" d=\"M288.07,587.79c-20.19,49.24-64.74,67.06-74.22,103.5,6.37,3.18,33.76,9.38,46.4,11.4l-.71,5.09c12.24,2.33,41.36,8.37,45.63,6.25l1.07-6.36c6.87-2.61,28.43-2.12,37.4-.12,0,0-.66,1.41.36,5,1.55,2.89,24.31,2.2,24.31,2.2s29.86,0,38.07-.59v-6.42c9.65-1.42,44.08-3.67,47.36-1.45l1.76,4.55c10.66.22,33.36-5.51,35.53-7.34l-1.18-4.78c5.22-2,31.32-6.91,33.7-10.33-7.48-37.11-61.69-53.2-83.43-102\"/><path class=\"z-cls-1\" d=\"M290.46,573c-20,48.86-66.33,81.77-75.73,117.93,6.31,3.16,33.42,9.38,46,11.38l-.7,5.05c12.14,2.32,41.23,8.33,45.47,6.23l1.07-6.31c6.81-2.59,28.32-2.12,37.22-.13a8.76,8.76,0,0,0,.36,5c1.54,2.86,24.13,2.19,24.13,2.19s29.57.05,37.73-.58v-6.38c9.57-1.4,43.94-3.66,47.19-1.46l1.77,4.51c10.57.22,33.21-5.48,35.37-7.3l-1.17-4.74c5.18-2,31-6.93,33.41-10.32-7.43-36.83-62.74-66.59-84.31-115\"/><path class=\"z-cls-2\" d=\"M454,710.13c-6.47-52.2-50-129.82-47.85-150.48\"/><path class=\"z-cls-2\" d=\"M270.53,710.13c6.71-53.88,54.77-125.19,51.73-150.52\"/><line class=\"z-cls-2\" x1=\"368.31\" y1=\"714.76\" x2=\"364.07\" y2=\"553.21\"/><line class=\"z-cls-5\" x1=\"364.07\" y1=\"333.36\" x2=\"364.07\" y2=\"553.21\"/><path class=\"z-cls-5\" d=\"M320.37,333.76c-27.08,70.21-6,144.1,1.6,225.89\"/><path class=\"z-cls-5\" d=\"M407.77,333.76c27.09,70.21,6,144.1-1.6,225.89\"/>", "sil": ["M433,332.19C478.3,383.38,478.42,472,438.23,573c0,0-43.65-19.76-73.89-19.76S290.46,573,290.46,573C250.27,472,253.69,391.25,292.94,332.19Z", "M290.46,573c-20,48.86-66.33,81.77-75.73,117.93,6.31,3.16,33.42,9.38,46,11.38l-.7,5.05c12.14,2.32,41.23,8.33,45.47,6.23l1.07-6.31c6.81-2.59,28.32-2.12,37.22-.13a8.76,8.76,0,0,0,.36,5c1.54,2.86,24.13,2.19,24.13,2.19s29.57.05,37.73-.58v-6.38c9.57-1.4,43.94-3.66,47.19-1.46l1.77,4.51c10.57.22,33.21-5.48,35.37-7.3l-1.17-4.74c5.18-2,31-6.93,33.41-10.32-7.43-36.83-62.74-66.59-84.31-115"], "box": [206, 324, 324, 400], "parts": [[242, 324, 245, 257], [206, 565, 324, 159]]}, "princess": {"lines": "<path class=\"p-cls-1\" d=\"M470.24,227.82c-10.61-22.5-24.9-27.78-24.9-27.78l-.06.22-44-15.26c1.24,31.31-3.07,60.8-35.31,80.75-33.25-20.47-36.47-50.72-32.87-81.38L282.78,198c-44.37,24-43.75,93.11-66.84,167.4,6,3.44,24,8,43.38,11,.21-1.67,28.78-90.89,28.38-92.58,4.37,13.2,4.83,48,5.95,50.32,35.71-.45,103.07-1,138.71-1.49.84,0,4.43-45.33,6.72-52.37-.78,2.55,31.93,95.95,32.22,98.57,14.28-1.37,29.69-6.15,39.44-10.14C497.21,313.51,477.05,242.28,470.24,227.82Z\"/><path class=\"p-cls-2\" d=\"M286.89,220.37s.75,1.91,1.13,14.66-3.75,30.59-3.75,30.59-.43,21.91,3.06,38.84,6.33,29.63,6.33,29.63l138.69-1.49a247.36,247.36,0,0,1,4.3-26.93c3.49-16.94,3-27.29,3-27.29l.61-7.64,7.55-54.09-2.57-16.39-44-15.26c1.23,31.3-3.08,60.8-35.32,80.75-33.23-20.48-36.47-50.73-32.86-81.38L282.79,198l4.1,22.37\"/><path class=\"p-cls-3\" d=\"M437.56,248.15s-22.93,8.65-29.41,27.65c-3.22,9.44-6.7,58-6.7,58\"/><path class=\"p-cls-3\" d=\"M291,247.61s24.21,9.19,30.7,28.19c3.21,9.44,6.7,58,6.7,58\"/><rect class=\"p-cls-4\" x=\"356.63\" y=\"278.11\" width=\"10.14\" height=\"2.41\"/><path class=\"p-cls-5\" d=\"M366.18,284.4c-3.44,0-6.23-2.37-6.23-5.29s2.79-5.28,6.23-5.28,6.23,2.37,6.23,5.28S369.61,284.4,366.18,284.4Z\"/><ellipse class=\"p-cls-5\" cx=\"366.18\" cy=\"279.11\" rx=\"4.42\" ry=\"3.75\"/><line class=\"p-cls-4\" x1=\"356.96\" y1=\"279.21\" x2=\"359.74\" y2=\"279.38\"/><rect class=\"p-cls-4\" x=\"356.63\" y=\"300.21\" width=\"10.14\" height=\"2.41\"/><line class=\"p-cls-4\" x1=\"356.96\" y1=\"301.31\" x2=\"360.61\" y2=\"301.31\"/><path class=\"p-cls-5\" d=\"M365.68,306.72c-3.43,0-6.23-2.37-6.23-5.28s2.8-5.29,6.23-5.29,6.24,2.37,6.24,5.29S369.12,306.72,365.68,306.72Z\"/><ellipse class=\"p-cls-5\" cx=\"365.68\" cy=\"301.44\" rx=\"4.42\" ry=\"3.75\"/><rect class=\"p-cls-4\" x=\"356.63\" y=\"322.6\" width=\"10.14\" height=\"2.41\"/><line class=\"p-cls-4\" x1=\"356.96\" y1=\"323.7\" x2=\"360.61\" y2=\"323.7\"/><path class=\"p-cls-5\" d=\"M365.68,329.05c-3.43,0-6.23-2.37-6.23-5.29s2.8-5.29,6.23-5.29,6.24,2.37,6.24,5.29S369.12,329.05,365.68,329.05Z\"/><ellipse class=\"p-cls-5\" cx=\"365.68\" cy=\"323.76\" rx=\"4.42\" ry=\"3.75\"/><path class=\"p-cls-2\" d=\"M376.12,333.27c-.05-13-.57-56.26-.57-61.26\"/><path class=\"p-cls-6\" d=\"M377.88,332.57V270.89s-4.24-2-10.06-5.14\"/><path class=\"p-cls-7\" d=\"M471.3,378.8l-32-96.15.27,1.63c-1.4-8.7-3.41-25.41-1.55-40.88.88-18,7.35-43.36,7.35-43.36s14.29,5.28,24.9,27.78c6.81,14.45,27,85.7,40.5,140.84C501,372.65,482.74,377.44,471.3,378.8Z\"/><path class=\"p-cls-3\" d=\"M436.65,260.79s8.31,19.18,20.17,59c4.88,16.33,11.21,38.11,17,58.11\"/><path class=\"p-cls-8\" d=\"M216,365.41c13.08-54.59,32.37-124,39.13-138.39,10.61-22.5,27.71-29,27.71-29s9.61,38.79,8.68,65.37L287.64,285l-28.31,91.38C240,373.45,221.93,368.84,216,365.41Z\"/><path class=\"p-cls-3\" d=\"M291.12,262.71s-10.52,22.22-22.38,62c-4.47,15-10.22,33.29-15.67,50.35\"/><line class=\"p-cls-2\" x1=\"365.91\" y1=\"265.75\" x2=\"375.55\" y2=\"272.01\"/><path class=\"p-cls-6\" d=\"M424.58,192.19s7.18,45.67-19.29,74.69c-2.23,2.45-21.62-17.19-24.35-15\"/><path class=\"p-cls-6\" d=\"M307.37,192.19s-7.13,45.43,19.09,74.46c2.29,2.53,21.88-16.74,24.7-14.5\"/><path class=\"p-cls-7\" d=\"M327.06,265.75c-22.09-23.08-21.69-60.5-19.6-76.34,8.77-1.32,24.13-8.47,32.29-9.61-3.17,25.22-4.81,51.45,12.25,71C347.76,251,334.11,261.74,327.06,265.75Z\"/><path class=\"p-cls-7\" d=\"M405.3,265.75c22.08-23.08,21.68-60.5,19.59-76.34-8.77-1.32-24.12-8.47-32.28-9.61,3.16,25.22,4.81,51.45-12.26,71C384.59,251,398.25,261.74,405.3,265.75Z\"/><path class=\"p-cls-7\" d=\"M221.24,637.2s20.06,7.65,53.22,6.68l.59-5.88c20.54-.43,25.65,2.9,25.65,2.9l-.05,3.54c20.65,5.29,64.38,5.81,75.47,3.46l.22-4c8.16-1.65,23.05,5.35,54.63-.75l0-4.26s7.9-2.74,25.94-1.44l.38,4.77s30-3,47.43-6l-.85-4.16c8.43-.42,34.88-2.41,49-9,0,0-30-89.5-63.85-181.41-30.45-82.58-57.23-109.56-57.23-109.56H294.08s-34.42,40.67-62.63,125.74c-27.86,84-53.63,157.43-54.25,161.62,7.11,4.28,25,8.24,45.26,11.25Z\"/><path class=\"p-cls-4\" d=\"M413.52,447.16c7.53,58.17,12,117.26,17.45,196\"/><path class=\"p-cls-9\" d=\"M424.87,399.86c7.29,30,25.86,157.63,32.38,242.34\"/><path class=\"p-cls-4\" d=\"M318.23,446c-8.1,63.64-11.45,117.65-17.58,198.45\"/><path class=\"p-cls-9\" d=\"M306.78,399.86c-6.13,34.65-25.81,159.32-32.32,244\"/><path class=\"p-cls-9\" d=\"M421.05,390.12s-6.81-45-19.28-58c0,0,8.68,47.29,11.65,94.58\"/><path class=\"p-cls-9\" d=\"M310.6,390.12s5.14-45,17.61-58c0,0-13.4,71.27-12.31,94.58\"/><path class=\"p-cls-10\" d=\"M503.74,631.66S490,573.57,476.23,517.46c-12.28-50.23-20.07-83.36-15.07-76.57\"/><path class=\"p-cls-10\" d=\"M222.41,630.7S240.17,563.59,257.83,503c21.31-73.15,30.36-84.78,16.63-73.12\"/><path class=\"p-cls-2\" d=\"M376.12,647.9l0-313.63s0-1.42,0-3.84\"/><line class=\"p-cls-6\" x1=\"377.86\" y1=\"646.3\" x2=\"377.88\" y2=\"331.69\"/>", "walls": "<path class=\"p-cls-1\" d=\"M470.24,227.82c-10.61-22.5-24.9-27.78-24.9-27.78l-.06.22-44-15.26c1.24,31.31-3.07,60.8-35.31,80.75-33.25-20.47-36.47-50.72-32.87-81.38L282.78,198c-44.37,24-43.75,93.11-66.84,167.4,6,3.44,24,8,43.38,11,.21-1.67,28.78-90.89,28.38-92.58,4.37,13.2,4.83,48,5.95,50.32,35.71-.45,103.07-1,138.71-1.49.84,0,4.43-45.33,6.72-52.37-.78,2.55,31.93,95.95,32.22,98.57,14.28-1.37,29.69-6.15,39.44-10.14C497.21,313.51,477.05,242.28,470.24,227.82Z\"/><path class=\"p-cls-2\" d=\"M286.89,220.37s.75,1.91,1.13,14.66-3.75,30.59-3.75,30.59-.43,21.91,3.06,38.84,6.33,29.63,6.33,29.63l138.69-1.49a247.36,247.36,0,0,1,4.3-26.93c3.49-16.94,3-27.29,3-27.29l.61-7.64,7.55-54.09-2.57-16.39-44-15.26c1.23,31.3-3.08,60.8-35.32,80.75-33.23-20.48-36.47-50.73-32.86-81.38L282.79,198l4.1,22.37\"/><path class=\"p-cls-3\" d=\"M437.56,248.15s-22.93,8.65-29.41,27.65c-3.22,9.44-6.7,58-6.7,58\"/><path class=\"p-cls-3\" d=\"M291,247.61s24.21,9.19,30.7,28.19c3.21,9.44,6.7,58,6.7,58\"/><rect class=\"p-cls-4\" x=\"356.63\" y=\"278.11\" width=\"10.14\" height=\"2.41\"/><path class=\"p-cls-5\" d=\"M366.18,284.4c-3.44,0-6.23-2.37-6.23-5.29s2.79-5.28,6.23-5.28,6.23,2.37,6.23,5.28S369.61,284.4,366.18,284.4Z\"/><ellipse class=\"p-cls-5\" cx=\"366.18\" cy=\"279.11\" rx=\"4.42\" ry=\"3.75\"/><line class=\"p-cls-4\" x1=\"356.96\" y1=\"279.21\" x2=\"359.74\" y2=\"279.38\"/><rect class=\"p-cls-4\" x=\"356.63\" y=\"300.21\" width=\"10.14\" height=\"2.41\"/><line class=\"p-cls-4\" x1=\"356.96\" y1=\"301.31\" x2=\"360.61\" y2=\"301.31\"/><path class=\"p-cls-5\" d=\"M365.68,306.72c-3.43,0-6.23-2.37-6.23-5.28s2.8-5.29,6.23-5.29,6.24,2.37,6.24,5.29S369.12,306.72,365.68,306.72Z\"/><ellipse class=\"p-cls-5\" cx=\"365.68\" cy=\"301.44\" rx=\"4.42\" ry=\"3.75\"/><rect class=\"p-cls-4\" x=\"356.63\" y=\"322.6\" width=\"10.14\" height=\"2.41\"/><line class=\"p-cls-4\" x1=\"356.96\" y1=\"323.7\" x2=\"360.61\" y2=\"323.7\"/><path class=\"p-cls-5\" d=\"M365.68,329.05c-3.43,0-6.23-2.37-6.23-5.29s2.8-5.29,6.23-5.29,6.24,2.37,6.24,5.29S369.12,329.05,365.68,329.05Z\"/><ellipse class=\"p-cls-5\" cx=\"365.68\" cy=\"323.76\" rx=\"4.42\" ry=\"3.75\"/><path class=\"p-cls-2\" d=\"M376.12,333.27c-.05-13-.57-56.26-.57-61.26\"/><path class=\"p-cls-7\" d=\"M471.3,378.8l-32-96.15.27,1.63c-1.4-8.7-3.41-25.41-1.55-40.88.88-18,7.35-43.36,7.35-43.36s14.29,5.28,24.9,27.78c6.81,14.45,27,85.7,40.5,140.84C501,372.65,482.74,377.44,471.3,378.8Z\"/><path class=\"p-cls-3\" d=\"M436.65,260.79s8.31,19.18,20.17,59c4.88,16.33,11.21,38.11,17,58.11\"/><path class=\"p-cls-8\" d=\"M216,365.41c13.08-54.59,32.37-124,39.13-138.39,10.61-22.5,27.71-29,27.71-29s9.61,38.79,8.68,65.37L287.64,285l-28.31,91.38C240,373.45,221.93,368.84,216,365.41Z\"/><path class=\"p-cls-3\" d=\"M291.12,262.71s-10.52,22.22-22.38,62c-4.47,15-10.22,33.29-15.67,50.35\"/><line class=\"p-cls-2\" x1=\"365.91\" y1=\"265.75\" x2=\"375.55\" y2=\"272.01\"/><path class=\"p-cls-7\" d=\"M327.06,265.75c-22.09-23.08-21.69-60.5-19.6-76.34,8.77-1.32,24.13-8.47,32.29-9.61-3.17,25.22-4.81,51.45,12.25,71C347.76,251,334.11,261.74,327.06,265.75Z\"/><path class=\"p-cls-7\" d=\"M405.3,265.75c22.08-23.08,21.68-60.5,19.59-76.34-8.77-1.32-24.12-8.47-32.28-9.61,3.16,25.22,4.81,51.45-12.26,71C384.59,251,398.25,261.74,405.3,265.75Z\"/><path class=\"p-cls-7\" d=\"M221.24,637.2s20.06,7.65,53.22,6.68l.59-5.88c20.54-.43,25.65,2.9,25.65,2.9l-.05,3.54c20.65,5.29,64.38,5.81,75.47,3.46l.22-4c8.16-1.65,23.05,5.35,54.63-.75l0-4.26s7.9-2.74,25.94-1.44l.38,4.77s30-3,47.43-6l-.85-4.16c8.43-.42,34.88-2.41,49-9,0,0-30-89.5-63.85-181.41-30.45-82.58-57.23-109.56-57.23-109.56H294.08s-34.42,40.67-62.63,125.74c-27.86,84-53.63,157.43-54.25,161.62,7.11,4.28,25,8.24,45.26,11.25Z\"/><path class=\"p-cls-2\" d=\"M376.12,647.9l0-313.63s0-1.42,0-3.84\"/>", "sil": ["M470.24,227.82c-10.61-22.5-24.9-27.78-24.9-27.78l-.06.22-44-15.26c1.24,31.31-3.07,60.8-35.31,80.75-33.25-20.47-36.47-50.72-32.87-81.38L282.78,198c-44.37,24-43.75,93.11-66.84,167.4,6,3.44,24,8,43.38,11,.21-1.67,28.78-90.89,28.38-92.58,4.37,13.2,4.83,48,5.95,50.32,35.71-.45,103.07-1,138.71-1.49.84,0,4.43-45.33,6.72-52.37-.78,2.55,31.93,95.95,32.22,98.57,14.28-1.37,29.69-6.15,39.44-10.14C497.21,313.51,477.05,242.28,470.24,227.82Z", "M327.06,265.75c-22.09-23.08-21.69-60.5-19.6-76.34,8.77-1.32,24.13-8.47,32.29-9.61-3.17,25.22-4.81,51.45,12.25,71C347.76,251,334.11,261.74,327.06,265.75Z", "M405.3,265.75c22.08-23.08,21.68-60.5,19.59-76.34-8.77-1.32-24.12-8.47-32.28-9.61,3.16,25.22,4.81,51.45-12.26,71C384.59,251,398.25,261.74,405.3,265.75Z", "M221.24,637.2s20.06,7.65,53.22,6.68l.59-5.88c20.54-.43,25.65,2.9,25.65,2.9l-.05,3.54c20.65,5.29,64.38,5.81,75.47,3.46l.22-4c8.16-1.65,23.05,5.35,54.63-.75l0-4.26s7.9-2.74,25.94-1.44l.38,4.77s30-3,47.43-6l-.85-4.16c8.43-.42,34.88-2.41,49-9,0,0-30-89.5-63.85-181.41-30.45-82.58-57.23-109.56-57.23-109.56H294.08s-34.42,40.67-62.63,125.74c-27.86,84-53.63,157.43-54.25,161.62,7.11,4.28,25,8.24,45.26,11.25Z"], "box": [169, 171, 392, 487], "parts": [[207, 176, 311, 211], [296, 171, 64, 102], [372, 171, 64, 102], [169, 324, 392, 335]]}}}};
+
+(()=>{
+const VB=726.93,VBH=938.64,W=1000,H=Math.round(W*VBH/VB),K=W/VB,CX=W/2;
+const PX_PER_CM=7.2;                      /* croquis about 168 cm tall on a 1000 px wide sheet */
+const $=id=>document.getElementById(id);
+const cv={draw:$('cDraw'),trim:$('cTrim'),line:$('cLine'),over:$('cOver')};
+for(const k in cv){cv[k].width=W;cv[k].height=H;}
+const d=cv.draw.getContext('2d',{willReadFrequently:true}),L=cv.line.getContext('2d'),o=cv.over.getContext('2d'),tr=cv.trim.getContext('2d',{willReadFrequently:true});   /* trims (ruffle, ric-rac) live on their own layer */
+const gl=document.createElement('canvas');gl.width=W;gl.height=H;const gx=gl.getContext('2d');   /* garment lines only, for export */
+const bnd=document.createElement('canvas');bnd.width=W;bnd.height=H;const bx=bnd.getContext('2d',{willReadFrequently:true});
+
+const TOOLS=[['fill','Fill'],['ink','Fineliner'],['water','Watercolour'],['erase','Eraser'],['ruffle','Ruffle'],['ricrac','Ric-rac']];
+const COLORS=['#2b2326','#ffffff','#f6d9df','#e8698a','#b23a55','#f3e3c8','#c8a27a','#7a8f6a','#5f7fa6','#24324f'];
+const MATS=[['solid','Solid'],['denim','Denim'],['knit','Knit'],['tweed','Tweed'],['plaid','Plaid']];
+const DESIGNS=[
+  {id:'bodice',cat:'Bodice',name:'Lisa Bodice',zh:'V-neck, short sleeves',tags:'lisa bodice top v-neck short sleeve 上衣'},
+  {id:'skirt',cat:'Skirt',name:'Circle Skirt',zh:'Full circle, knee length',tags:'circle skirt full 圓裙 裙'},
+  {id:'zelda',cat:'Skirt',name:'Zelda Skirt',zh:'Fitted, flounce hem',tags:'zelda skirt fitted flounce mermaid trumpet 魚尾裙 裙'},
+  {id:'princess',cat:'Dress',name:'Princess Dress',zh:'Princess seams, button front',tags:'princess dress button collar long sleeve 洋裝 公主線'}];
+const S={tool:'fill',eraseMode:'all',color:'#e8698a',mat:'solid',photo:null,mirror:true,penOnly:false,size:'regular',zoom:1,
+  inside:{ink:false,water:true},pieces:{bodice:true,skirt:true,zelda:false,princess:false},sizes:{ink:4,water:30,fill:0,erase:28,ruffle:24,ricrac:10}};
+
+/* ---------- color helpers ---------- */
+const rgb=h=>{h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255]};
+const lum=c=>{const[r,g,b]=rgb(c);return(0.299*r+0.587*g+0.114*b)/255};
+const mix=(c,amt)=>{const[r,g,b]=rgb(c);const f=v=>Math.round(amt>0?v+(255-v)*amt:v*(1+amt));return`rgb(${f(r)},${f(g)},${f(b)})`};
+const rgba=(c,a)=>{const[r,g,b]=rgb(c);return`rgba(${r},${g},${b},${a})`};
+const blendFor=c=>lum(c)>0.8?'source-over':'multiply';
+
+/* ---------- croquis rendering ---------- */
+const svgImg=(inner,css)=>new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;
+  im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB} ${VBH}" width="${W}" height="${H}"><style>${css}</style>${inner}</svg>`);});
+const silOf=ds=>ds.map(p=>`<path d="${p}"/>`).join('');
+let composeId=0;
+function inked(im){   /* white paper -> transparent, ink -> dark line with matching alpha */
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d',{willReadFrequently:true});
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);x.drawImage(im,0,0);const D=x.getImageData(0,0,W,H),p=D.data;
+  for(let i=0;i<p.length;i+=4){const a=255-(p[i]*.299+p[i+1]*.587+p[i+2]*.114);p[i]=35;p[i+1]=31;p[i+2]=32;p[i+3]=Math.min(255,a*1.15);}
+  x.putImageData(D,0,0);return c;}
+async function compose(){
+  const id=++composeId,C=CROQUIS[S.size],on=Object.keys(S.pieces).filter(k=>S.pieces[k]).sort((a,b)=>(a==='bodice')-(b==='bodice'));   /* bodice drawn over the skirt */
+  const lines=on.map(k=>C.pieces[k].lines).join(''),walls=on.map(k=>C.pieces[k].walls).join(''),sil=on.map(k=>silOf(C.pieces[k].sil)).join('');
+  const nofill=C.css+'*{fill:none!important}',thick=nofill+'*{stroke-width:2.1px!important;stroke:#000!important}',solid='*{fill:#000;stroke:#000;stroke-width:1px}';
+  const keep=C.css+'*{stroke-width:2.1px!important;stroke:#000!important}';   /* garments keep their own white fills, so a layer drawn on top hides the lines under it */
+  const [b,l0,s,bt,lt0]=await Promise.all([svgImg(C.body,nofill),svgImg(lines,C.css),svgImg(sil,solid),svgImg(C.body,thick),svgImg(walls,keep)]);
+  const l=inked(l0),lt=inked(lt0);
+  if(id!==composeId)return;
+  const lay=(x,body,ln)=>{x.clearRect(0,0,W,H);x.globalCompositeOperation='source-over';x.drawImage(body,0,0);
+    if(on.length){x.globalCompositeOperation='destination-out';x.drawImage(s,0,0);x.globalCompositeOperation='source-over';x.drawImage(ln,0,0);}};
+  lay(L,b,l);lay(bx,bt,lt);
+  sx.clearRect(0,0,W,H);if(on.length)sx.drawImage(s,0,0);silData=null;
+  gx.clearRect(0,0,W,H);if(on.length)gx.drawImage(l,0,0);
+  bndData=null;
+}
+let bndData=null,silData=null;
+const silc=document.createElement('canvas');silc.width=W;silc.height=H;const sx=silc.getContext('2d',{willReadFrequently:true});
+const silHit=(x,y)=>(silData||(silData=sx.getImageData(0,0,W,H).data))[((y|0)*W+(x|0))*4+3]>128;
+const boundary=()=>bndData||(bndData=bx.getImageData(0,0,W,H).data);
+
+/* ---------- brush dabs (from Atelier) ---------- */
+function dabWater(x,px,py,r,color){const rr=r*(.92+Math.random()*.14),gr=x.createRadialGradient(px,py,rr*.2,px,py,rr);
+  gr.addColorStop(0,rgba(color,.85));gr.addColorStop(.6,rgba(color,.7));gr.addColorStop(1,rgba(color,0));x.fillStyle=gr;x.beginPath();x.arc(px,py,rr,0,7);x.fill();}
+function dabRuffle(x,px,py,r,color,ang,n){x.save();x.translate(px,py);x.rotate(ang);x.strokeStyle=color;x.lineWidth=Math.max(.8,r*.07);x.lineCap='round';
+  const len=r*(.75+.25*Math.sin(n*1.7));x.globalAlpha=.85;
+  x.beginPath();x.moveTo(-r*.3,-r*.2);x.lineTo(r*.3,-r*.2);x.moveTo(0,-r*.2);x.lineTo(0,len);x.stroke();
+  x.globalAlpha=1;x.beginPath();x.arc(0,len,r*.3,0,Math.PI);x.stroke();x.restore();}
+const SPACING={water:.18,ruffle:.55};
+const BUF={water:.42};
+
+/* ---------- swatches (materials + photos) ---------- */
+const patCache={};
+function tile(mat,color){
+  const s=96,c=document.createElement('canvas');c.width=c.height=s;const x=c.getContext('2d');
+  const Lm=lum(color),hi=mix(color,Lm>0.7?-0.12:0.28),lo=mix(color,-0.35);
+  x.fillStyle=color;x.fillRect(0,0,s,s);
+  const wrap=fn=>{for(const ox of[-s,0,s])for(const oy of[-s,0,s]){x.save();x.translate(ox,oy);fn();x.restore();}};
+  if(mat==='denim'){x.lineWidth=1.6;
+    for(let i=-s;i<s*2;i+=4){x.globalAlpha=.32;x.strokeStyle=hi;x.beginPath();x.moveTo(i,0);x.lineTo(i-s,s);x.stroke();}
+    for(let i=0;i<180;i++){x.globalAlpha=.25+Math.random()*.3;x.fillStyle=Math.random()<.5?'#fff':lo;x.fillRect(Math.random()*s,Math.random()*s,1.5,1);}
+  }else if(mat==='knit'){x.lineWidth=2.2;x.lineCap='round';
+    for(let col=0;col<s;col+=12)for(let row=-10;row<s+10;row+=10){
+      x.globalAlpha=.45;x.strokeStyle=lo;x.beginPath();x.moveTo(col+1,row);x.lineTo(col+6,row+7);x.lineTo(col+11,row);x.stroke();
+      x.globalAlpha=.35;x.strokeStyle=hi;x.beginPath();x.moveTo(col+2,row-1.5);x.lineTo(col+6,row+4.5);x.stroke();}
+  }else if(mat==='tweed'){const cs=[hi,lo,'#f3eee4',mix(color,0.5)];
+    for(let i=0;i<620;i++){const px=Math.random()*s,py=Math.random()*s,a=Math.random()*Math.PI,l=2+Math.random()*5;
+      wrap(()=>{x.globalAlpha=.55;x.strokeStyle=cs[i%4];x.lineWidth=1.2;x.beginPath();x.moveTo(px,py);x.lineTo(px+Math.cos(a)*l,py+Math.sin(a)*l);x.stroke();});}
+  }else if(mat==='plaid'){
+    x.globalAlpha=.35;x.fillStyle=lo;x.fillRect(0,10,s,16);x.fillRect(10,0,16,s);x.fillRect(0,58,s,10);x.fillRect(58,0,10,s);
+    x.globalAlpha=.6;x.fillStyle=hi;x.fillRect(0,40,s,2);x.fillRect(40,0,2,s);x.fillRect(0,84,s,1.5);x.fillRect(84,0,1.5,s);
+  }
+  x.globalAlpha=1;return c;
+}
+let photos=[];                                  /* {id,url,sizeCm,img} */
+function photoTile(p){const px=Math.max(16,Math.round(p.sizeCm*PX_PER_CM)),c=document.createElement('canvas');c.width=c.height=px;
+  c.getContext('2d').drawImage(p.img,0,0,px,px);return c;}
+function paint(){
+  if(S.photo){const p=photos.find(q=>q.id===S.photo);if(p&&p.img){const k='photo'+p.id;if(!patCache[k])patCache[k]=d.createPattern(photoTile(p),'repeat');return patCache[k];}}
+  if(S.mat==='solid')return S.color;
+  const k=S.mat+S.color;if(!patCache[k])patCache[k]=d.createPattern(tile(S.mat,S.color),'repeat');return patCache[k];
+}
+
+/* ---------- history ---------- */
+const undoS=[],redoS=[];
+const grab=()=>({d:d.getImageData(0,0,W,H),t:tr.getImageData(0,0,W,H)});
+const restore=st=>{d.putImageData(st.d,0,0);tr.putImageData(st.t,0,0);};
+function snap(){undoS.push(grab());if(undoS.length>15)undoS.shift();redoS.length=0;syncHist();}
+function syncHist(){$('undo').disabled=!undoS.length;$('redo').disabled=!redoS.length;}
+function undo(){if(!undoS.length)return;redoS.push(grab());restore(undoS.pop());syncHist();save();}
+function redo(){if(!redoS.length)return;undoS.push(grab());restore(redoS.pop());syncHist();save();}
+
+/* ---------- drawing primitives ---------- */
+function both(ctx,fn){fn(ctx);if(S.mirror){ctx.save();ctx.setTransform(-1,0,0,1,W,0);fn(ctx);ctx.restore();}}
+function smooth(pts){if(pts.length<3)return pts;const r=[pts[0]];for(let i=1;i<pts.length-1;i++)r.push({x:(pts[i-1].x+pts[i].x*2+pts[i+1].x)/4,y:(pts[i-1].y+pts[i].y*2+pts[i+1].y)/4});r.push(pts[pts.length-1]);return r;}
+function resample(pts,step){
+  const out=[];if(pts.length<2)return out;let acc=0,prev=pts[0];out.push(prev);
+  for(let i=1;i<pts.length;i++){let cur=pts[i];let dx=cur.x-prev.x,dy=cur.y-prev.y,len=Math.hypot(dx,dy);
+    while(acc+len>=step){const k=(step-acc)/len;const p={x:prev.x+dx*k,y:prev.y+dy*k};out.push(p);prev=p;dx=cur.x-prev.x;dy=cur.y-prev.y;len=Math.hypot(dx,dy);acc=0;}
+    acc+=len;prev=cur;}
+  return out.map((p,i)=>{const a=out[Math.max(0,i-1)],b=out[Math.min(out.length-1,i+1)];const l=Math.hypot(b.x-a.x,b.y-a.y)||1;return{x:p.x,y:p.y,tx:(b.x-a.x)/l,ty:(b.y-a.y)/l};});
+}
+/* ric-rac: the zig-zag braid from trims.svg (amplitude 3.8, period 21.2, cord 5.6 at size 10) laid along the stroke */
+function renderRicrac(x,pts,s,color){
+  const R=resample(smooth(smooth(pts)),1.2);if(R.length<2)return;
+  const A=s*.38,P=s*2.12;x.save();x.strokeStyle=color;x.lineWidth=s*.56;x.lineCap='round';x.lineJoin='round';
+  x.beginPath();R.forEach((p,i)=>{const off=A*Math.sin(i*1.2/P*2*Math.PI),X=p.x-p.ty*off,Y=p.y+p.tx*off;i?x.lineTo(X,Y):x.moveTo(X,Y);});x.stroke();
+  x.globalAlpha=.25;x.strokeStyle=lum(color)>0.6?mix(color,-0.5):'#fff';x.lineWidth=Math.max(.6,s*.08);x.stroke();x.restore();
+}
+
+/* ---------- flood fill against the croquis lines ---------- */
+function doFill(sx,sy){
+  const D=d.getImageData(0,0,W,H),dd=D.data,td=boundary(),mask=new Uint8Array(W*H);
+  let anyOpaque=false;
+  const flood=(x0,y0)=>{
+    x0|=0;y0|=0;if(x0<0||y0<0||x0>=W||y0>=H)return;const i0=y0*W+x0;if(mask[i0]||td[i0*4+3]>90)return;
+    const sr=dd[i0*4],sg=dd[i0*4+1],sb=dd[i0*4+2],sa=dd[i0*4+3];if(sa>=40)anyOpaque=true;
+    const ok=i=>{if(mask[i]||td[i*4+3]>90)return false;const j=i*4;
+      if(sa<40)return dd[j+3]<40;return Math.abs(dd[j]-sr)<60&&Math.abs(dd[j+1]-sg)<60&&Math.abs(dd[j+2]-sb)<60&&Math.abs(dd[j+3]-sa)<60;};
+    const st=[x0,y0];
+    while(st.length){let y=st.pop(),x=st.pop();let i=y*W+x;while(x>0&&ok(i-1)){x--;i--;}
+      let up=false,dn=false;
+      while(x<W&&ok(i)){mask[i]=1;
+        if(y>0){if(ok(i-W)){if(!up){st.push(x,y-1);up=true;}}else up=false;}
+        if(y<H-1){if(ok(i+W)){if(!dn){st.push(x,y+1);dn=true;}}else dn=false;}
+        x++;i++;}
+    }
+  };
+  flood(sx,sy);if(S.mirror)flood(W-1-sx,sy);
+  let count=0;for(let i=0;i<mask.length;i++)count+=mask[i];
+  if(count>W*H*.6){return false;}               /* clicked outside every outline: don't paint the whole sheet */
+  for(let pass=0;pass<2;pass++){const m2=mask.slice();for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;if(!mask[i]&&(mask[i-1]||mask[i+1]||mask[i-W]||mask[i+W]))m2[i]=1;}mask.set(m2);}
+  const mc=document.createElement('canvas');mc.width=W;mc.height=H;const mx=mc.getContext('2d'),MI=mx.createImageData(W,H);
+  for(let i=0;i<mask.length;i++)if(mask[i])MI.data[i*4+3]=255;mx.putImageData(MI,0,0);
+  const tc=document.createElement('canvas');tc.width=W;tc.height=H;const tx=tc.getContext('2d');
+  tx.fillStyle=paint();tx.fillRect(0,0,W,H);tx.globalCompositeOperation='destination-in';tx.drawImage(mc,0,0);
+  d.save();d.globalCompositeOperation=anyOpaque?'source-over':'destination-over';d.drawImage(tc,0,0);d.restore();
+  return true;
+}
+
+/* ---------- pointer input ---------- */
+const sheet=$('sheet'),stage=$('stage');
+let act=null;
+const pos=e=>{const r=cv.over.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height,p:e.pressure||.5};};
+function strokeSeg(a,c,b,w){
+  const targets=act&&act.inkBuf?[bfx]:S.tool!=='erase'?[d]:S.eraseMode==='trims'?[tr]:S.eraseMode==='paint'?[d]:[d,tr];
+  for(const t of targets)both(t,x=>{x.save();x.lineCap='round';x.lineJoin='round';x.lineWidth=w;
+    if(S.tool==='erase'){x.globalCompositeOperation='destination-out';x.strokeStyle='#000';}else x.strokeStyle=S.color;
+    x.beginPath();x.moveTo(a.x,a.y);x.quadraticCurveTo(c.x,c.y,b.x,b.y);x.stroke();x.restore();});
+}
+const widthFor=p=>{const s=S.sizes[S.tool];return S.tool==='ink'?s*(.3+.9*p):S.tool==='water'?s*(.6+.6*p):s;};
+/* on-screen diameter of the current brush, in sheet pixels */
+const visSize=()=>{const s=S.sizes[S.tool];return S.tool==='ink'?s*.75:S.tool==='water'?s*1.1:S.tool==='ricrac'?s*1.32:s;};
+const sheetScale=()=>sheet.getBoundingClientRect().width/W;
+function showRing(cx,cy){const r=$('ring');if(S.tool==='fill'){r.hidden=true;return;}const dpx=Math.max(3,visSize()*sheetScale());
+  r.style.width=r.style.height=dpx+'px';r.style.left=cx+'px';r.style.top=cy+'px';r.hidden=false;}
+function updateDot(){const i=$('sizeDot').firstElementChild,dpx=Math.max(2,visSize()*sheetScale());
+  i.style.width=i.style.height=dpx+'px';i.style.background=S.color;$('sizeDot').classList.toggle('erase',S.tool==='erase');
+  $('sizeDot').title=dpx>40?'Brush is larger than this preview':'';}
+sheet.addEventListener('pointermove',e=>{if(act&&act.pan)return;const b=sheet.getBoundingClientRect();showRing(e.clientX-b.left,e.clientY-b.top);});
+sheet.addEventListener('pointerleave',()=>{if(!act)$('ring').hidden=true;});
+const isDab=()=>S.tool==='water'||S.tool==='ruffle';
+const buf=document.createElement('canvas');buf.width=W;buf.height=H;const bfx=buf.getContext('2d');
+function dabSeg(a,c,b,p0,p1){
+  const id=S.tool,target=BUF[id]?bfx:id==='ruffle'?tr:d;let last=a;
+  const steps=Math.max(1,Math.ceil(Math.hypot(c.x-a.x,c.y-a.y)+Math.hypot(b.x-c.x,b.y-c.y)));
+  for(let i=1;i<=steps;i++){const t=i/steps,u=1-t;
+    const pt={x:u*u*a.x+2*u*t*c.x+t*t*b.x,y:u*u*a.y+2*u*t*c.y+t*t*b.y},pp=p0+(p1-p0)*t;
+    const dl=Math.hypot(pt.x-last.x,pt.y-last.y);
+    if(dl>.01){const na=Math.atan2(pt.y-last.y,pt.x-last.x);act.ang=act.ang==null?na:act.ang+Math.atan2(Math.sin(na-act.ang),Math.cos(na-act.ang))*.3;}
+    act.acc+=dl;last=pt;
+    const r=widthFor(pp)/2,ang=act.ang||0,n=act.n++;
+    if(act.acc>=Math.max(1,r*SPACING[id])){act.acc=0;if(id==='water'&&wash){washDirty(pt.x,pt.y,r*1.2);if(S.mirror)washDirty(W-1-pt.x,pt.y,r*1.2);}both(target,x=>id==='water'?dabWater(x,pt.x,pt.y,r,S.color):dabRuffle(x,pt.x,pt.y,r,S.color,ang,n));}
+  }
+}
+/* watercolour stays inside the outlined area the stroke starts in, so it never bleeds across a seam or outline */
+const clipc=document.createElement('canvas');clipc.width=W;clipc.height=H;const clx=clipc.getContext('2d');let clipOn=false,clipData=null;
+function regionClip(sx,sy){
+  const td=boundary(),mask=new Uint8Array(W*H);
+  const flood=(x0,y0)=>{x0|=0;y0|=0;if(x0<0||y0<0||x0>=W||y0>=H)return;const i0=y0*W+x0;if(mask[i0]||td[i0*4+3]>90)return;
+    const ok=i=>!mask[i]&&td[i*4+3]<=90,st=[x0,y0];
+    while(st.length){let y=st.pop(),x=st.pop(),i=y*W+x;while(x>0&&ok(i-1)){x--;i--;}let up=false,dn=false;
+      while(x<W&&ok(i)){mask[i]=1;if(y>0){if(ok(i-W)){if(!up){st.push(x,y-1);up=true;}}else up=false;}
+        if(y<H-1){if(ok(i+W)){if(!dn){st.push(x,y+1);dn=true;}}else dn=false;}x++;i++;}}};
+  flood(sx,sy);if(S.mirror)flood(W-1-sx,sy);
+  let n=0;for(let i=0;i<mask.length;i++)n+=mask[i];
+  if(!n||n>W*H*.6){clipOn=false;return;}            /* started on a line or on the open sheet: paint freely */
+  const m2=mask.slice();for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;if(!mask[i]&&(mask[i-1]||mask[i+1]||mask[i-W]||mask[i+W]))m2[i]=1;}
+  const D=clx.createImageData(W,H);for(let i=0;i<m2.length;i++)if(m2[i])D.data[i*4+3]=255;clx.putImageData(D,0,0);clipOn=true;clipData=D.data;
+  const u=`url(${clipc.toDataURL()})`,st=cv.over.style;st.maskImage=st.webkitMaskImage=u;st.maskSize=st.webkitMaskSize='100% 100%';   /* live preview clipped by CSS, no per-move cost */
+}
+function clipBuf(){if(!clipOn)return;bfx.save();bfx.globalCompositeOperation='destination-in';bfx.drawImage(clipc,0,0);bfx.restore();}
+/* Watercolour is mixed straight into the paint layer while you draw, so what you see mid-stroke is what you get.
+   Colours mix like pigment (weighted geometric mean) instead of stacking, so crossings fuse softly instead of
+   leaving dark seams; a little edge pooling and paper grain keep it from looking like a marker. */
+const GRAIN=(()=>{const s=3,gw=Math.ceil(W/s)+2,R=new Float32Array(gw*(Math.ceil(H/s)+2)).map(()=>Math.random()),g=new Float32Array(W*H);
+  for(let y=0;y<H;y++){const gy=y/s,y0=gy|0,fy=gy-y0;for(let x=0;x<W;x++){const gx=x/s,x0=gx|0,fx=gx-x0,i=y0*gw+x0;
+    g[y*W+x]=.84+.16*((R[i]*(1-fx)+R[i+1]*fx)*(1-fy)+(R[i+gw]*(1-fx)+R[i+gw+1]*fx)*fy);}}return g;})();
+let wash=null;
+function washStart(){wash={bak:d.getImageData(0,0,W,H).data,dirty:null,raf:0,C:rgb(S.color),k:BUF.water};}
+function washDirty(x,y,r){const q=wash.dirty;const a=[x-r,y-r,x+r,y+r];wash.dirty=q?[Math.min(q[0],a[0]),Math.min(q[1],a[1]),Math.max(q[2],a[2]),Math.max(q[3],a[3])]:a;}
+function washRender(){
+  const q=wash.dirty;if(!q)return;wash.dirty=null;const P=12;
+  const x0=Math.max(0,Math.floor(q[0]-P)),y0=Math.max(0,Math.floor(q[1]-P)),x1=Math.min(W,Math.ceil(q[2]+P)),y1=Math.min(H,Math.ceil(q[3]+P)),w=x1-x0,h=y1-y0;if(w<=0||h<=0)return;
+  const B=bfx.getImageData(x0,y0,w,h).data;
+  const bak=wash.bak,out=d.createImageData(w,h),O=out.data,C=wash.C,lnC=C.map(v=>Math.log(Math.max(v,1))),k=wash.k,E=[0,0,0],M=[0,0,0];
+  for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){
+    const bi=(yy*w+xx)*4,gi=(y0+yy)*W+x0+xx,si=gi*4;
+    O[bi]=bak[si];O[bi+1]=bak[si+1];O[bi+2]=bak[si+2];O[bi+3]=bak[si+3];
+    const a=Math.min(1,B[bi+3]/235);if(a<.004)continue;
+    let c=k*a*(.92+.5*a*(1-a))*GRAIN[gi];   /* slight pooling where the wash thins out at its edge */if(clipOn)c*=clipData[si+3]/255;if(c<.004)continue;if(c>.95)c=.95;
+    const da=bak[si+3]/255;let pe=0;
+    for(let j=0;j<3;j++){E[j]=255-(255-bak[si+j])*da;pe=Math.max(pe,(255-E[j])/255);}
+    let lo=9,hi=-9;for(let j=0;j<3;j++){const q=255-C[j];if(q>24){const t=(255-E[j])/q;lo=Math.min(lo,t);hi=Math.max(hi,t);}}
+    const tint=hi-lo<.12;   /* existing paint is a lighter wash of this same colour */
+    const wn=tint?c*1.5:c*2.5,ce=tint?c*(1-.5*Math.min(1,pe*2.5)):c;let mn=255;   /* same colour: merge, deepen gently; other colours: glaze */
+    for(let j=0;j<3;j++){const mix=Math.exp((pe*Math.log(Math.max(E[j],1))+wn*lnC[j])/(pe+wn));M[j]=E[j]*(1-ce)+mix*ce;if(M[j]<mn)mn=M[j];}
+    const a2=Math.min(1,Math.max(da,c,1-mn/255));
+    for(let j=0;j<3;j++)O[bi+j]=Math.round(255-(255-M[j])/a2);O[bi+3]=Math.round(a2*255);
+  }
+  d.putImageData(out,x0,y0);
+}
+function showBuf(){if(wash){if(!wash.raf)wash.raf=requestAnimationFrame(()=>{if(wash){wash.raf=0;washRender();}});return;}o.clearRect(0,0,W,H);o.drawImage(buf,0,0);}
+function startBuf(){bfx.clearRect(0,0,W,H);washStart();}
+function commitBuf(){if(wash){cancelAnimationFrame(wash.raf);washRender();wash=null;}
+  bfx.clearRect(0,0,W,H);o.clearRect(0,0,W,H);cv.over.style.opacity='';cv.over.style.mixBlendMode='';cv.over.style.maskImage=cv.over.style.webkitMaskImage='';}
+sheet.addEventListener('pointerdown',e=>{
+  if(act)return;
+  if(S.penOnly&&e.pointerType==='touch'){act={pan:true,id:e.pointerId,x:e.clientX,y:e.clientY,sl:stage.scrollLeft,st:stage.scrollTop};return;}
+  e.preventDefault();sheet.setPointerCapture(e.pointerId);
+  const p=pos(e);hideSample();
+  if(S.tool==='fill'){snap();if(doFill(p.x,p.y))save();else{undoS.pop();syncHist();toast('Tap inside an outlined area to fill it');}return;}
+  snap();act={id:e.pointerId,pts:[p],mid:p,acc:1e9,lp:p.p,ang:null,n:0};
+  if(isDab()){if(BUF[S.tool]){if(S.inside[S.tool])regionClip(p.x,p.y);else clipOn=false;startBuf();dabSeg(p,p,p,p.p,p.p);showBuf();}}
+  else if(S.tool==='ink'||S.tool==='erase'){
+    if(S.tool==='ink'&&S.inside.ink){regionClip(p.x,p.y);if(clipOn){act.inkBuf=true;bfx.clearRect(0,0,W,H);}}
+    strokeSeg(p,p,{x:p.x+.01,y:p.y},widthFor(p.p));if(act.inkBuf)showBuf();}
+});
+sheet.addEventListener('pointermove',e=>{
+  if(!act||e.pointerId!==act.id)return;
+  if(act.pan){stage.scrollLeft=act.sl-(e.clientX-act.x);stage.scrollTop=act.st-(e.clientY-act.y);return;}
+  const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+  for(const ev of (evs.length?evs:[e])){
+    const p=pos(ev),prev=act.pts[act.pts.length-1];if(Math.hypot(p.x-prev.x,p.y-prev.y)<1)continue;
+    act.pts.push(p);
+    if(S.tool==='ricrac')continue;
+    const mid={x:(prev.x+p.x)/2,y:(prev.y+p.y)/2};
+    if(isDab())dabSeg(act.mid,prev,mid,act.lp,p.p);else strokeSeg(act.mid,prev,mid,widthFor(p.p));
+    act.mid=mid;act.lp=p.p;
+  }
+  if(BUF[S.tool]||act.inkBuf)showBuf();
+  if(S.tool==='ricrac'){o.clearRect(0,0,W,H);both(o,x=>renderRicrac(x,act.pts,S.sizes.ricrac,S.color));}
+});
+const end=e=>{
+  if(!act||e.pointerId!==act.id)return;
+  if(!act.pan){
+    if(S.tool==='ricrac'){o.clearRect(0,0,W,H);
+      if(act.pts.length>2)both(tr,x=>renderRicrac(x,act.pts,S.sizes.ricrac,S.color));else{undoS.pop();syncHist();}}
+    if(BUF[S.tool])commitBuf();
+    if(act.inkBuf){clipBuf();d.drawImage(buf,0,0);bfx.clearRect(0,0,W,H);o.clearRect(0,0,W,H);cv.over.style.maskImage=cv.over.style.webkitMaskImage='';}
+    save();
+  }
+  act=null;
+};
+sheet.addEventListener('pointerup',end);sheet.addEventListener('pointercancel',end);
+
+/* ---------- photo swatches (Swatch Kit) ---------- */
+const SK_TEXT={camHint:'Fill the frame with {cm} × {cm} cm of fabric',camSmall:'The ruler marks are centimetres. Lay a ruler beside it to line up.',
+  cropHint:'Drag and pinch the photo so {cm} × {cm} cm fills the frame',cropSmall:'The ruler marks are centimetres',cancel:'Cancel',use:'Use',shot:'Take photo',native:'Camera app'};
+function loadImg(src){return new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;im.src=src;});}
+async function addPhotoFromFile(file){
+  const cm=Math.min(100,Math.max(2,+$('frameCm').value||30));
+  let sw=null;
+  try{sw=await SwatchKit.capture({source:file,sizeCm:cm,size:480,quality:.82,text:SK_TEXT});}catch(e){toast('That photo could not be opened. Try another one.');return;}
+  if(!sw)return;
+  const p={id:Date.now().toString(36),url:sw.url,sizeCm:sw.sizeCm,img:await loadImg(sw.url)};
+  photos.unshift(p);if(photos.length>8)photos.length=8;
+  S.photo=p.id;S.tool='fill';savePhotos();buildMats();sync();
+  toast(`Added a ${p.sizeCm} cm swatch. Tap the garment to fill it.`);
+}
+function savePhotos(){try{localStorage.setItem('paperdoll-photos',JSON.stringify(photos.map(({id,url,sizeCm})=>({id,url,sizeCm}))));}catch(e){
+  try{localStorage.setItem('paperdoll-photos',JSON.stringify(photos.slice(0,3).map(({id,url,sizeCm})=>({id,url,sizeCm}))));}catch(_){}}}
+/* first-visit tip above the camera button */
+function hideTip(){if($('swatchTip').hidden)return;$('swatchTip').hidden=true;put('paperdoll-tip-swatch','1');}
+$('tipClose').onclick=hideTip;$('swatchTip').onclick=hideTip;
+for(const id of['camBtn','albumBtn'])$(id).addEventListener('click',hideTip);
+for(const id of['camFile','albumFile'])$(id).onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)addPhotoFromFile(f);};
+for(const [b,i] of[['camBtn','camFile'],['albumBtn','albumFile']])$(b).onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$(i).click();}};
+
+/* ---------- UI ---------- */
+function toolPreview(id){
+  const c=document.createElement('canvas');c.width=68;c.height=40;const x=c.getContext('2d'),col='#5a3a44';
+  const pts=[];for(let i=0;i<=34;i++){const t=i/34;pts.push({x:6+t*56,y:20+Math.sin(t*6.28)*7});}
+  x.lineCap='round';x.strokeStyle=col;x.fillStyle=col;
+  if(id==='ink'){x.lineWidth=2.6;x.beginPath();pts.forEach((p,i)=>i?x.lineTo(p.x,p.y):x.moveTo(p.x,p.y));x.stroke();}
+  else if(id==='water'){pts.forEach((p,i)=>{if(i%2)return;const g=x.createRadialGradient(p.x,p.y,1,p.x,p.y,9);g.addColorStop(0,'rgba(232,105,138,.35)');g.addColorStop(1,'rgba(232,105,138,0)');x.fillStyle=g;x.beginPath();x.arc(p.x,p.y,9,0,7);x.fill();});}
+  else if(id==='fill'){x.fillStyle='#e8698a';x.beginPath();x.moveTo(14,32);x.lineTo(26,8);x.lineTo(54,10);x.lineTo(46,32);x.closePath();x.fill();x.strokeStyle=col;x.lineWidth=1.4;x.stroke();}
+  else if(id==='erase'){x.strokeStyle='#d9c6cb';x.lineWidth=12;x.beginPath();x.moveTo(10,28);x.lineTo(58,12);x.stroke();}
+  else if(id==='ruffle'){let n=0;for(let i=0;i<56;i+=7)dabRuffle(x,8+i,10,13,col,0,n++);}
+  else if(id==='ricrac'){renderRicrac(x,[{x:4,y:20},{x:34,y:20},{x:64,y:20}],7,col);}
+  return c.toDataURL();
+}
+function buildMats(){
+  const chips=MATS.map(([k,n])=>`<button class="mat" data-m="${k}"><i style="${k==='solid'?'background:'+S.color:'background-image:url('+tile(k,'#8a7c86').toDataURL()+')'}"></i>${n}</button>`);
+  photos.forEach((p,i)=>chips.push(`<button class="mat" data-p="${p.id}" aria-label="Photo swatch ${i+1}"><i style="background-image:url(${p.url})"></i>${p.sizeCm} cm<span class="x" data-del="${p.id}" aria-label="Delete this swatch">×</span></button>`));
+  $('mats').innerHTML=chips.join('');syncOn();
+}
+function buildDesigns(){
+  const q=$('search').value.trim().toLowerCase();
+  const list=DESIGNS.filter(g=>!q||(g.name+' '+g.zh+' '+g.tags).toLowerCase().includes(q));
+  if(!list.length){$('designs').innerHTML=`<p class="empty">No designs match "${q.replace(/[<>&"]/g,'')}". Try bodice or skirt.</p>`;return;}
+  const C=CROQUIS[S.size],cats=[...new Set(list.map(g=>g.cat))];
+  $('designs').innerHTML=cats.map(cat=>`<div class="cat"><h3>${cat}</h3>${list.filter(g=>g.cat===cat).map(g=>{
+    const P=C.pieces[g.id],b=P.box,src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${b.join(' ')}"><style>${C.css}</style>${P.lines}</svg>`);
+    return `<button class="card${S.pieces[g.id]?' on':''}" data-d="${g.id}" aria-pressed="${S.pieces[g.id]}"><img src="${src}" alt="${g.name} line drawing"><span class="nm"><b>${g.name}</b><span>${S.pieces[g.id]?'On':'Off'}</span></span><span style="font-size:12px;color:var(--muted)">${g.zh}</span></button>`;}).join('')}</div>`).join('');
+}
+function buildUI(){
+  $('tools').innerHTML=TOOLS.map(([k,n])=>`<button class="tool" data-t="${k}"><img src="${toolPreview(k)}" alt="">${n}</button>`).join('');
+  $('swatches').innerHTML=COLORS.map(c=>`<button class="sw" data-c="${c}" style="background:${c}" aria-label="Colour ${c}"></button>`).join('');
+  $('tools').onclick=e=>{const b=e.target.closest('[data-t]');if(b){S.tool=b.dataset.t;sync();}};
+  $('swatches').onclick=e=>{const b=e.target.closest('[data-c]');if(b){S.color=b.dataset.c;$('custom').value=S.color;if(S.tool==='erase')S.tool='ink';sync();}};
+  $('custom').oninput=e=>{S.color=e.target.value;sync();};
+  $('mats').onclick=e=>{
+    const del=e.target.closest('[data-del]');
+    if(del){photos=photos.filter(p=>p.id!==del.dataset.del);if(S.photo===del.dataset.del)S.photo=null;savePhotos();buildMats();sync();return;}
+    const b=e.target.closest('[data-m],[data-p]');if(!b)return;
+    if(b.dataset.p){S.photo=b.dataset.p;}else{S.photo=null;S.mat=b.dataset.m;}
+    S.tool='fill';sync();};
+  $('size').oninput=e=>{S.sizes[S.tool]=+e.target.value;$('sizeVal').textContent=e.target.value;updateDot();
+    const b=sheet.getBoundingClientRect(),st=stage.getBoundingClientRect();
+    showRing(Math.min(b.width,Math.max(0,st.left+st.width/2-b.left)),Math.min(b.height,Math.max(0,st.top+st.height/2-b.top)));
+    clearTimeout(showRing.t);showRing.t=setTimeout(()=>{if(!act)$('ring').hidden=true;},900);};
+  $('inside').onclick=()=>{S.inside[S.tool]=!S.inside[S.tool];sync();};
+  $('eraseModes').onclick=e=>{const b=e.target.closest('[data-e]');if(b){S.eraseMode=b.dataset.e;sync();}};
+  $('mirror').onclick=()=>{S.mirror=!S.mirror;sync();};
+  $('penonly').onclick=()=>{S.penOnly=!S.penOnly;sync();toast(S.penOnly?'Pen only: the S Pen draws, fingers move the page':'Fingers and pen both draw');};
+  document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>switchSize(b.dataset.size));
+  $('designs').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;const k=b.dataset.d,on=!S.pieces[k],cat=DESIGNS.find(g=>g.id===k).cat;
+    if(on)DESIGNS.forEach(g=>{if(g.cat===cat||g.cat==='Dress'||cat==='Dress')S.pieces[g.id]=false;});   /* one bodice, one skirt at a time; a dress replaces both */
+    S.pieces[k]=on;buildDesigns();compose();prefs();};
+  $('search').oninput=buildDesigns;
+  $('drawerTab').onclick=()=>{$('drawer').classList.toggle('closed');$('drawerTab').setAttribute('aria-label',$('drawer').classList.contains('closed')?'Show designs':'Hide designs');setTimeout(layout,260);};
+  $('undo').onclick=undo;$('redo').onclick=redo;
+  let armed=0;$('clear').onclick=()=>{const b=$('clear');
+    if(armed){clearTimeout(armed);armed=0;b.textContent='Clear';b.classList.remove('on');snap();d.clearRect(0,0,W,H);tr.clearRect(0,0,W,H);hideSample();save();return;}
+    b.textContent='Tap again to clear';b.classList.add('on');armed=setTimeout(()=>{armed=0;b.textContent='Clear';b.classList.remove('on');},3000);};
+  $('export').onclick=()=>{renderExport();$('modal').hidden=false;};
+  $('incBody').onchange=renderExport;
+  $('closeModal').onclick=()=>{$('modal').hidden=true;};
+  $('savePng').onclick=savePng;
+  $('zin').onclick=()=>setZoom(S.zoom*1.25);$('zout').onclick=()=>setZoom(S.zoom/1.25);
+  addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}});
+}
+function syncOn(){
+  document.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',!S.photo&&b.dataset.m===S.mat));
+  document.querySelectorAll('[data-p]').forEach(b=>b.classList.toggle('on',b.dataset.p===S.photo));
+  const solid=document.querySelector('[data-m=solid] i');if(solid)solid.style.background=S.color;
+}
+function sync(){
+  document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('on',b.dataset.t===S.tool));
+  document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('on',b.dataset.c.toLowerCase()===S.color.toLowerCase()));
+  document.querySelectorAll('[data-size]').forEach(b=>b.classList.toggle('on',b.dataset.size===S.size));
+  syncOn();
+  $('mirror').classList.toggle('on',S.mirror);$('penonly').classList.toggle('on',S.penOnly);
+  $('fSize').hidden=S.tool==='fill';$('fColor').hidden=S.tool==='erase';$('fErase').hidden=S.tool!=='erase';$('fMat').hidden=S.tool!=='fill';
+  $('fInside').hidden=!(S.tool in S.inside);if(S.tool in S.inside){$('inside').classList.toggle('on',S.inside[S.tool]);$('inside').setAttribute('aria-pressed',S.inside[S.tool]);}
+  document.querySelectorAll('[data-e]').forEach(b=>b.classList.toggle('on',b.dataset.e===S.eraseMode));
+  const s=S.sizes[S.tool];$('size').value=s;$('sizeVal').textContent=s;updateDot();
+  $('ring').hidden=true;
+  $('sizeTag').innerHTML=`Croquis · <b>${S.size==='regular'?'Regular':'Curvier'}</b>`;
+  sheet.style.cursor=S.tool==='fill'?'cell':'crosshair';
+  prefs();
+}
+
+/* ---------- size switch: each croquis keeps its own drawing ---------- */
+const store=k=>{try{return localStorage.getItem(k);}catch(e){return null;}};
+const put=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
+async function switchSize(sz){
+  if(sz===S.size)return;
+  clearTimeout(saveT);saveNow();
+  S.size=sz;undoS.length=0;redoS.length=0;syncHist();d.clearRect(0,0,W,H);tr.clearRect(0,0,W,H);
+  buildDesigns();sync();await compose();await loadDrawing();
+}
+async function loadDrawing(){
+  const saved=store('paperdoll-draw-'+S.size);
+  if(saved){try{const im=await loadImg(saved);d.clearRect(0,0,W,H);d.drawImage(im,0,0);}catch(e){}
+    const st=store('paperdoll-trim-'+S.size);if(st){try{const im=await loadImg(st);tr.clearRect(0,0,W,H);tr.drawImage(im,0,0);}catch(e){}}}
+  else sample();
+}
+
+/* ---------- layout & zoom ---------- */
+function layout(){
+  const r=stage.getBoundingClientRect(),aw=r.width-28,ah=r.height-28;
+  const base=Math.max(180,Math.min(aw,ah*W/H));
+  sheet.style.width=base*S.zoom+'px';sheet.style.height=base*S.zoom*H/W+'px';updateDot();$('zval').textContent=Math.round(S.zoom*100)+'%';
+}
+function setZoom(z){S.zoom=Math.min(4,Math.max(1,z));layout();}
+addEventListener('resize',layout);
+
+/* ---------- export ---------- */
+let exportCanvas=null;
+function renderExport(){
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);x.drawImage(cv.draw,0,0);
+  x.drawImage($('incBody').checked?cv.line:gl,0,0);x.drawImage(cv.trim,0,0);   /* trims sit over the design lines */
+  exportCanvas=c;$('outImg').src=c.toDataURL('image/png');
+}
+let downloads=null;
+async function savePng(){
+  if(!downloads||!exportCanvas)return;
+  exportCanvas.toBlob(async blob=>{
+    try{await downloads.save({filename:`paperdoll-${S.size}.png`,data:blob});toast('PNG saved');}
+    catch(e){if(e&&e.code==='declined')return;if(e&&e.code==='rate_limited'){toast('The last save window is still open');return;}
+      $('savePng').hidden=true;toast('Saving is not available here. Press and hold the image to save it.');}
+  },'image/png');
+}
+window.claude?.use?.('downloads').then(ns=>{downloads=ns;$('savePng').hidden=!ns;if(ns)$('saveHint').textContent='Tap Save PNG, or press and hold the image to save it.';}).catch(()=>{});
+
+/* ---------- persistence ---------- */
+let saveT=0;
+function saveNow(){put('paperdoll-draw-'+S.size,cv.draw.toDataURL());put('paperdoll-trim-'+S.size,cv.trim.toDataURL());}
+function save(){clearTimeout(saveT);saveT=setTimeout(saveNow,700);}
+function prefs(){put('paperdoll-prefs',JSON.stringify({size:S.size,mirror:S.mirror,penOnly:S.penOnly,inside:S.inside,pieces:S.pieces,color:S.color}));}
+function toast(msg){const el=$('toast');el.textContent=msg;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,3200);}
+let sampleShown=false;
+function hideSample(){if(sampleShown){sampleShown=false;}}
+function fillPanels(b){   /* seed every panel inside a box (Zelda's seams run waist to hem) */
+  const k=W/VB,td=boundary();let dd=d.getImageData(0,0,W,H).data;
+  for(let y=(b[1]+12)*k|0;y<(b[1]+b[3])*k;y+=3)for(let x=b[0]*k|0;x<(b[0]+b[2])*k;x+=3){const i=(y*W+x)*4;
+    if(td[i+3]>90||dd[i+3]>=40||!silHit(x,y))continue;doFill(x,y);dd=d.getImageData(0,0,W,H).data;}
+}
+function sample(){
+  /* example colourway so the first view shows what the tool does */
+  const keep={c:S.color,m:S.mat,p:S.photo,mi:S.mirror};S.mirror=true;S.photo=null;
+  const seeds=S.size==='regular'?{bodice:[500,445],sleeve:[605,351],skirt:[500,700]}:{bodice:[500,395],sleeve:[619,330],skirt:[500,670]};
+  if(S.pieces.skirt){S.color='#e8698a';S.mat='plaid';doFill(...seeds.skirt);}
+  if(S.pieces.zelda){S.color='#e8698a';S.mat='plaid';fillPanels(CROQUIS[S.size].pieces.zelda.box);}
+  if(S.pieces.bodice){S.color='#f3e3c8';S.mat='knit';doFill(...seeds.bodice);doFill(...seeds.sleeve);}
+  if(S.pieces.princess){const P=CROQUIS[S.size].pieces.princess;S.color='#e8698a';S.mat='plaid';fillPanels(P.parts[P.parts.length-1]);S.color='#f3e3c8';S.mat='knit';fillPanels(P.box);}
+  S.color=keep.c;S.mat=keep.m;S.photo=keep.p;S.mirror=keep.mi;sampleShown=true;
+  toast('This is an example colourway. Tap Clear to start fresh.');
+}
+
+/* ---------- boot ---------- */
+(async()=>{
+  try{const pr=JSON.parse(store('paperdoll-prefs')||'null');
+    if(pr){S.size=pr.size==='curvier'?'curvier':'regular';S.mirror=pr.mirror!==false;S.penOnly=!!pr.penOnly;if(pr.pieces)Object.assign(S.pieces,pr.pieces);if(pr.inside)Object.assign(S.inside,pr.inside);if(pr.color)S.color=pr.color;}}catch(e){}
+  try{const ps=JSON.parse(store('paperdoll-photos')||'[]');for(const p of ps){try{photos.push({...p,img:await loadImg(p.url)});}catch(e){}}}catch(e){}
+  $('custom').value=S.color;
+  if(innerWidth<=760)$('drawer').classList.add('closed');
+  buildUI();buildMats();buildDesigns();sync();layout();
+  if(!store('paperdoll-tip-swatch'))$('swatchTip').hidden=false;
+  await compose();await loadDrawing();
+})();
+})();
+</script>
