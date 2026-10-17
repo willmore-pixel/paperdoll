@@ -45,7 +45,7 @@ button:focus-visible,input:focus-visible,label.btn:focus-visible{outline:2px sol
 .hgroup{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 
 /* stage */
-.main{flex:1;min-height:0;position:relative;display:flex}
+.main{flex:1;min-height:0;position:relative;display:flex;overflow:hidden}   /* the closed drawer sits off the right edge; clip it so phones keep a device-width layout */
 .stage{flex:1;min-width:0;position:relative;overflow:auto;background-color:var(--paper);
   background-image:radial-gradient(var(--dot) 1.4px,transparent 1.5px);background-size:16px 16px}
 .stage-inner{min-width:100%;min-height:100%;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box}
@@ -117,7 +117,8 @@ input[type=range]{width:150px;accent-color:var(--pink)}
 .mat{height:34px;padding:0 10px 0 4px;border-radius:99px;background:var(--chip);font-size:13px;display:inline-flex;align-items:center;gap:6px;position:relative}
 .mat i{width:26px;height:26px;border-radius:50%;display:inline-block;background-size:cover;background-position:center;border:1px solid rgba(0,0,0,.15)}
 .mat.on{background:var(--ink);color:var(--panel)}
-.chk{display:inline-flex;align-items:center;gap:8px;min-height:34px;font-size:13px;cursor:pointer;user-select:none}
+.chk[hidden]{display:none}
+.chk{flex:none;display:inline-flex;align-items:center;gap:8px;min-height:34px;font-size:13px;cursor:pointer;user-select:none}
 .chk input{appearance:none;-webkit-appearance:none;width:20px;height:20px;margin:0;border:1.5px solid var(--muted);border-radius:5px;background:var(--panel);cursor:pointer;display:grid;place-content:center}
 .chk input:checked{background:var(--check)}
 .chk input:checked::after{content:'';width:5px;height:10px;border:solid var(--ink);border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
@@ -228,8 +229,7 @@ input[type=range]{width:150px;accent-color:var(--pink)}
       <div class="field" id="fColor"><span class="label">Colour</span><div class="mats" id="swatches"></div><input type="color" id="custom" value="#e8698a" aria-label="Custom colour"></div>
       <div class="field" id="fErase" hidden><span class="label">Erase</span><div class="mats" id="eraseModes">
         <button class="mat" data-e="all">Everything</button><button class="mat" data-e="trims">Trims only</button><button class="mat" data-e="paint">Paint only</button></div></div>
-      <div class="field" id="fSize"><span class="label">Size</span><input type="range" id="size" min="1" max="80"><span class="val" id="sizeVal"></span><span class="dot" id="sizeDot" aria-hidden="true"><i></i></span></div>
-      <div class="field" id="fInside"><label class="chk" title="Keep paint inside the outlined area where the stroke starts"><input type="checkbox" id="inside">Clip</label></div>
+      <div class="field" id="fSize"><span class="label">Size</span><input type="range" id="size" min="1" max="80"><span class="val" id="sizeVal"></span><span class="dot" id="sizeDot" aria-hidden="true"><i></i></span><label class="chk" id="fInside" title="Keep paint inside the outlined area where the stroke starts"><input type="checkbox" id="inside">Clip</label></div>
     </div>
     <div class="row" id="fMat">
       <span class="label">Swatches</span>
@@ -338,7 +338,7 @@ input[type=range]{width:150px;accent-color:var(--pink)}
   // ---------- Camera and crop screen ----------
 
   const CSS = `
-.skit{position:fixed;inset:0;z-index:2147483000;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,sans-serif}
+.skit{position:fixed;inset:0;overflow:hidden;contain:strict;z-index:2147483000;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,sans-serif}
 .skit img{position:absolute;left:0;top:0;max-width:none;transform-origin:0 0}
 .skit video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .skit .crop-only,.skit.crop .cam-only{display:none}.skit.crop .crop-only{display:block}
