@@ -541,7 +541,7 @@ sheet.addEventListener('pointerup',end);sheet.addEventListener('pointercancel',e
 const SK_TEXT={camHint:'Fill the frame with {cm} × {cm} cm of fabric',camSmall:'The ruler marks are centimetres. Lay a ruler beside it to line up.',
   cropHint:'Drag and pinch the photo so {cm} × {cm} cm fills the frame',cropSmall:'The ruler marks are centimetres',cancel:'Cancel',use:'Use',shot:'Take photo',native:'Camera app'};
 function loadImg(src){return new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;im.src=src;});}
-async function addPhotoFromFile(file){
+async function addPhotoFromFile(file){   // file: a photo, or "camera" for the live camera with the reference frame
   const cm=Math.min(100,Math.max(2,+$('frameCm').value||30));
   let sw=null;
   try{sw=await SwatchKit.capture({source:file,sizeCm:cm,size:480,quality:.82,text:SK_TEXT});}catch(e){toast('That photo could not be opened. Try another one.');return;}
@@ -559,6 +559,8 @@ $('tipClose').onclick=hideTip;$('swatchTip').onclick=hideTip;
 for(const id of['camBtn','albumBtn'])$(id).addEventListener('click',hideTip);
 for(const id of['camFile','albumFile'])$(id).onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)addPhotoFromFile(f);};
 for(const [b,i] of[['camBtn','camFile'],['albumBtn','albumFile']])$(b).onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$(i).click();}};
+/* live camera shows the cm frame while shooting; Swatch Kit falls back to the phone's camera app where that isn't allowed */
+if(navigator.mediaDevices?.getUserMedia)$('camBtn').addEventListener('click',e=>{e.preventDefault();addPhotoFromFile('camera');});
 
 /* ---------- UI ---------- */
 function toolPreview(id){
