@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Full-bleed pink so the icon also works as a maskable icon; the dress stays inside the central safe zone -->
+  <rect width="512" height="512" fill="#e8698a"/>
+  <g fill="#fff" stroke="#c94d6f" stroke-width="6" stroke-linejoin="round">
+    <path d="M222 130 Q256 150 290 130 L312 150 L300 196 Q296 222 300 246 L212 246 Q216 222 212 196 L200 150 Z"/>
+    <path d="M212 246 L300 246 Q336 310 372 380 Q256 404 140 380 Q176 310 212 246 Z"/>
+  </g>
+  <g fill="none" stroke="#c94d6f" stroke-width="5" stroke-linecap="round">
+    <path d="M236 250 Q228 320 214 392"/><path d="M276 250 Q284 320 298 392"/><path d="M256 250 L256 398"/>
+  </g>
+  <path d="M212 246 L300 246" stroke="#c94d6f" stroke-width="10"/>
+</svg>

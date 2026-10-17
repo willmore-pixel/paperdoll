@@ -81,7 +81,7 @@
   // ---------- Camera and crop screen ----------
 
   const CSS = `
-.skit{position:fixed;inset:0;z-index:2147483000;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,sans-serif}
+.skit{position:fixed;inset:0;overflow:hidden;contain:strict;z-index:2147483000;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,sans-serif}
 .skit img{position:absolute;left:0;top:0;max-width:none;transform-origin:0 0}
 .skit video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .skit .crop-only,.skit.crop .cam-only{display:none}.skit.crop .crop-only{display:block}
