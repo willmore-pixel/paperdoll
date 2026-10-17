@@ -5,17 +5,17 @@
 <style>
 /* Layout: pink pattern-shop band on top; croquis sheet centre with a slide-out Designs drawer; camera/undo row, trim tools and swatch strip below (vintage pattern-envelope feel) */
 :root{
-  --paper:#fffaf8; --panel:#fff; --blush:#fbe7ec; --pink:#e8698a; --pink-deep:#c94d6f; --on-pink:#fff;
+  --paper:#fffaf8; --panel:#fff; --blush:#fbe7ec; --check:#f7e9ed; --pink:#e8698a; --pink-deep:#c94d6f; --on-pink:#fff;
   --ink:#3a2a2f; --muted:#8b6f77; --line:#efd6dd; --dot:#f3dfe4; --chip:#f7eef0; --shadow:rgba(120,40,60,.14);
   --display:"Playfair Display",Georgia,"Times New Roman",serif;
   --script:"Yellowtail","Brush Script MT",cursive;
   --sans:"Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --paper:#1f181b; --panel:#2a2125; --blush:#3a2830; --pink:#ef7f9c; --pink-deep:#f59ab1; --on-pink:#2a1218;
+  --paper:#1f181b; --panel:#2a2125; --blush:#3a2830; --check:#5a3a46; --pink:#ef7f9c; --pink-deep:#f59ab1; --on-pink:#2a1218;
   --ink:#f7e9ed; --muted:#c3a6ae; --line:#46343b; --dot:#33262b; --chip:#35292e; --shadow:rgba(0,0,0,.4); color-scheme:dark}}
 :root[data-theme="dark"]{
-  --paper:#1f181b; --panel:#2a2125; --blush:#3a2830; --pink:#ef7f9c; --pink-deep:#f59ab1; --on-pink:#2a1218;
+  --paper:#1f181b; --panel:#2a2125; --blush:#3a2830; --check:#5a3a46; --pink:#ef7f9c; --pink-deep:#f59ab1; --on-pink:#2a1218;
   --ink:#f7e9ed; --muted:#c3a6ae; --line:#46343b; --dot:#33262b; --chip:#35292e; --shadow:rgba(0,0,0,.4); color-scheme:dark}
 [hidden]{display:none!important}
 html,body{height:100%}
@@ -113,7 +113,10 @@ input[type=range]{width:150px;accent-color:var(--pink)}
 .mat i{width:26px;height:26px;border-radius:50%;display:inline-block;background-size:cover;background-position:center;border:1px solid rgba(0,0,0,.15)}
 .mat.on{background:var(--ink);color:var(--panel)}
 .chk{display:inline-flex;align-items:center;gap:8px;min-height:34px;font-size:13px;cursor:pointer;user-select:none}
-.chk input{width:20px;height:20px;margin:0;accent-color:var(--pink);cursor:pointer}
+.chk input{appearance:none;-webkit-appearance:none;width:20px;height:20px;margin:0;border:1.5px solid var(--muted);border-radius:5px;background:var(--panel);cursor:pointer;display:grid;place-content:center}
+.chk input:checked{background:var(--check)}
+.chk input:checked::after{content:'';width:5px;height:10px;border:solid var(--ink);border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+.chk input:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
 #eraseModes .mat{padding:0 12px}
 .mat .x{position:absolute;right:-4px;top:-4px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--panel);font-size:12px;line-height:18px;text-align:center;display:none}
 .mat.on .x{display:block}
