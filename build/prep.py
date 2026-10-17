@@ -3,9 +3,10 @@ import re, json, math
 import os
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..') + '/'
 SRC = ROOT + 'src/'
-DES = SRC + 'design/'
+DES = ROOT + 'design/'   # canonical design folder
 # piece id -> design file stem ('<stem>1.svg' Regular, '<stem>2.svg' Curvier), class prefix
-DESIGNS = [('bodice', 'lisa bodice', 'b'), ('skirt', 'circle skirt', 's'), ('zelda', 'zelda skirt', 'z'), ('princess', 'princess dress', 'p')]
+DESIGNS = [('bodice', 'lisa bodice', 'b'), ('skirt', 'circle skirt', 's'), ('zelda', 'zelda skirt', 'z'), ('princess', 'princess dress', 'p'),
+           ('etoile', 'etoile bodice', 'e'), ('youthquake', 'youthquake skirt', 'y')]
 SHAPES = r'path|line|polygon|polyline|rect|circle|ellipse'
 
 def body_of(fn):

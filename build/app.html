@@ -271,9 +271,11 @@ const DESIGNS=[
   {id:'bodice',cat:'Bodice',name:'Lisa Bodice',zh:'V-neck, short sleeves',tags:'lisa bodice top v-neck short sleeve 上衣'},
   {id:'skirt',cat:'Skirt',name:'Circle Skirt',zh:'Full circle, knee length',tags:'circle skirt full 圓裙 裙'},
   {id:'zelda',cat:'Skirt',name:'Zelda Skirt',zh:'Fitted, flounce hem',tags:'zelda skirt fitted flounce mermaid trumpet 魚尾裙 裙'},
+  {id:'etoile',cat:'Bodice',name:'Etoile Bodice',zh:'Princess-seamed corset',tags:'etoile bodice top corset princess seam 馬甲 上衣'},
+  {id:'youthquake',cat:'Skirt',name:'Youthquake Skirt',zh:'A-line, button front, flap pockets',tags:'youthquake skirt a-line button pocket 裙'},
   {id:'princess',cat:'Dress',name:'Princess Dress',zh:'Princess seams, button front',tags:'princess dress button collar long sleeve 洋裝 公主線'}];
 const S={tool:'fill',eraseMode:'all',color:'#e8698a',mat:'solid',photo:null,mirror:true,penOnly:false,size:'regular',zoom:1,
-  inside:{ink:false,water:true},pieces:{bodice:true,skirt:true,zelda:false,princess:false},sizes:{ink:4,water:30,fill:0,erase:28,ruffle:24,ricrac:10}};
+  inside:{ink:false,water:true},pieces:{bodice:true,skirt:true,zelda:false,princess:false,etoile:false,youthquake:false},sizes:{ink:4,water:30,fill:0,erase:28,ruffle:24,ricrac:10}};
 
 /* ---------- color helpers ---------- */
 const rgb=h=>{h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255]};
@@ -287,13 +289,14 @@ const svgImg=(inner,css)=>new Promise((ok,no)=>{const im=new Image();im.onload=(
   im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB} ${VBH}" width="${W}" height="${H}"><style>${css}</style>${inner}</svg>`);});
 const silOf=ds=>ds.map(p=>`<path d="${p}"/>`).join('');
 let composeId=0;
+const catOf=k=>DESIGNS.find(g=>g.id===k).cat==='Bodice'?1:0;
 function inked(im){   /* white paper -> transparent, ink -> dark line with matching alpha */
   const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d',{willReadFrequently:true});
   x.fillStyle='#fff';x.fillRect(0,0,W,H);x.drawImage(im,0,0);const D=x.getImageData(0,0,W,H),p=D.data;
   for(let i=0;i<p.length;i+=4){const a=255-(p[i]*.299+p[i+1]*.587+p[i+2]*.114);p[i]=35;p[i+1]=31;p[i+2]=32;p[i+3]=Math.min(255,a*1.15);}
   x.putImageData(D,0,0);return c;}
 async function compose(){
-  const id=++composeId,C=CROQUIS[S.size],on=Object.keys(S.pieces).filter(k=>S.pieces[k]).sort((a,b)=>(a==='bodice')-(b==='bodice'));   /* bodice drawn over the skirt */
+  const id=++composeId,C=CROQUIS[S.size],on=Object.keys(S.pieces).filter(k=>S.pieces[k]).sort((a,b)=>catOf(a)-catOf(b));   /* tops drawn over the skirt */
   const lines=on.map(k=>C.pieces[k].lines).join(''),walls=on.map(k=>C.pieces[k].walls).join(''),sil=on.map(k=>silOf(C.pieces[k].sil)).join('');
   const nofill=C.css+'*{fill:none!important}',thick=nofill+'*{stroke-width:2.1px!important;stroke:#000!important}',solid='*{fill:#000;stroke:#000;stroke-width:1px}';
   const keep=C.css+'*{stroke-width:2.1px!important;stroke:#000!important}';   /* garments keep their own white fills, so a layer drawn on top hides the lines under it */
@@ -700,15 +703,16 @@ function prefs(){put('paperdoll-prefs',JSON.stringify({size:S.size,mirror:S.mirr
 function toast(msg){const el=$('toast');el.textContent=msg;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,3200);}
 let sampleShown=false;
 function hideSample(){if(sampleShown){sampleShown=false;}}
-function fillPanels(b){   /* seed every panel inside a box (Zelda's seams run waist to hem) */
-  const k=W/VB,td=boundary();let dd=d.getImageData(0,0,W,H).data;
+function fillPanels(b,sil){   /* seed every panel inside a box (Zelda's seams run waist to hem); with sil, only inside that piece */
+  const k=W/VB,td=boundary(),px=document.createElement('canvas').getContext('2d'),ps=(sil||[]).map(d=>new Path2D(d)),own=(x,y)=>!sil||ps.some(q=>px.isPointInPath(q,x/k,y/k));let dd=d.getImageData(0,0,W,H).data;
   for(let y=(b[1]+12)*k|0;y<(b[1]+b[3])*k;y+=3)for(let x=b[0]*k|0;x<(b[0]+b[2])*k;x+=3){const i=(y*W+x)*4;
-    if(td[i+3]>90||dd[i+3]>=40||![[0,0],[5,0],[-5,0],[0,5],[0,-5]].every(([u,v])=>silHit(x+u,y+v)))continue;doFill(x,y);dd=d.getImageData(0,0,W,H).data;}
+    if(td[i+3]>90||dd[i+3]>=40||![[0,0],[5,0],[-5,0],[0,5],[0,-5]].every(([u,v])=>silHit(x+u,y+v)&&own(x+u,y+v)))continue;doFill(x,y);dd=d.getImageData(0,0,W,H).data;}
 }
 function sample(){
   /* example colourway so the first view shows what the tool does */
   const keep={c:S.color,m:S.mat,p:S.photo,mi:S.mirror};S.mirror=true;S.photo=null;
   const seeds=S.size==='regular'?{bodice:[500,445],sleeve:[605,351],skirt:[500,700]}:{bodice:[500,395],sleeve:[619,330],skirt:[500,670]};
+  for(const [k,c,m] of [['etoile','#f3e3c8','knit'],['youthquake','#e8698a','plaid']])if(S.pieces[k]){S.color=c;S.mat=m;{const P=CROQUIS[S.size].pieces[k];fillPanels(P.box,P.sil);}}   /* top first: the skirt box reaches up under it */
   if(S.pieces.skirt){S.color='#e8698a';S.mat='plaid';doFill(...seeds.skirt);}
   if(S.pieces.zelda){S.color='#e8698a';S.mat='plaid';fillPanels(CROQUIS[S.size].pieces.zelda.box);}
   if(S.pieces.bodice){S.color='#f3e3c8';S.mat='knit';doFill(...seeds.bodice);doFill(...seeds.sleeve);}

@@ -14,7 +14,7 @@
 | `build/app.zh.html` | 舊版中文介面 |
 | `build/prep.py` | 把人台和款式 SVG 轉成 `build/croquis-data.js` |
 | `build/assemble.py` | 把 `app.html`、`croquis-data.js`、`src/swatch-kit.js` 合成 `index.html` |
-| `src/design/` | 款式 SVG：`<款式名>1.svg` 是 Regular，`<款式名>2.svg` 是 Curvier |
+| `design/` | 款式 SVG：`<款式名>1.svg` 是 Regular，`<款式名>2.svg` 是 Curvier |
 | `src/` | 人台 SVG、色卡工具 `swatch-kit.js`、花邊 `trims.svg`、版面參考 |
 | `croquis/` | 空白人台 SVG |
 | `新款式檔案規格.md` | 新款式 SVG 要怎麼畫 |
