@@ -9,6 +9,7 @@
 | 路徑 | 內容 |
 |---|---|
 | `index.html` | 建置好的單一檔案 App（GitHub Pages 直接提供這個檔案） |
+| `manifest.webmanifest`、`sw.js`、`icons/` | 讓網站可以「安裝」成 App（圖示、全螢幕、離線也能開） |
 | `build/app.html` | App 主程式（英文介面），改功能改這裡 |
 | `build/app.zh.html` | 舊版中文介面 |
 | `build/prep.py` | 把人台和款式 SVG 轉成 `build/croquis-data.js` |
