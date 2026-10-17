@@ -806,7 +806,8 @@ for(const id of['camBtn','albumBtn'])$(id).addEventListener('click',hideTip);
 for(const id of['camFile','albumFile'])$(id).onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)addPhotoFromFile(f);};
 for(const [b,i] of[['camBtn','camFile'],['albumBtn','albumFile']])$(b).onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$(i).click();}};
 /* live camera shows the cm frame while shooting; Swatch Kit falls back to the phone's camera app where that isn't allowed */
-if(navigator.mediaDevices?.getUserMedia)$('camBtn').addEventListener('click',e=>{e.preventDefault();addPhotoFromFile('camera');});
+const liveCam=navigator.mediaDevices?.getUserMedia&&(window.self===window.top||document.featurePolicy?.allowsFeature?.('camera'));   /* a framed page (the claude.ai artifact) usually can't open the camera */
+if(liveCam)$('camBtn').addEventListener('click',e=>{e.preventDefault();addPhotoFromFile('camera');});
 
 /* ---------- UI ---------- */
 function toolPreview(id){
