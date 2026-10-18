@@ -49,6 +49,12 @@ button:focus-visible,input:focus-visible,label.btn:focus-visible{outline:2px sol
 .sizeTag{position:absolute;left:max(12px,env(safe-area-inset-left,0px));top:12px;z-index:2;font-size:12px;color:var(--muted);background:var(--panel);
   border:1px solid var(--line);border-radius:99px;padding:5px 11px}
 .sizeTag b{font-family:var(--display);font-style:italic;color:var(--ink);font-weight:600}
+.sizeTag{display:flex;align-items:center;gap:8px}
+.skinc{display:flex;align-items:center;gap:6px;border-left:1px solid var(--line);padding-left:8px}
+.skinc input{width:92px;height:14px;margin:0;-webkit-appearance:none;appearance:none;border-radius:99px;border:1px solid var(--line);
+  background:linear-gradient(90deg,#fff 0 6%,#fbe9df 6%,#f3d0b8,#e7b48f,#d29a6f,#b57a52,#8d5a3b,#613d28,#3e281c)}
+.skinc input::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--panel);border:2px solid var(--pink-deep);box-shadow:0 1px 3px var(--shadow)}
+.skinc input::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--panel);border:2px solid var(--pink-deep)}
 .zoom{position:absolute;left:max(12px,env(safe-area-inset-left,0px));bottom:12px;display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px;z-index:2}
 .zoom button{width:32px;height:30px;border-radius:99px;font-size:18px}
 .zoom span{font-size:12px;color:var(--muted);align-self:center;min-width:40px;text-align:center;font-variant-numeric:tabular-nums}
@@ -174,9 +180,10 @@ input[type=range]{width:150px;accent-color:var(--pink)}
 
   <div class="main">
     <main class="stage" id="stage">
-      <div class="sizeTag" id="sizeTag"></div>
+      <div class="sizeTag"><span id="sizeTag"></span><label class="skinc" title="Skin tone of the croquis (far left: none)">Skin<input type="range" id="skin" min="0" max="100" step="1" aria-label="Skin tone"></label></div>
       <div class="stage-inner">
         <div class="sheet" id="sheet">
+          <canvas id="cSkin"></canvas>
           <canvas id="cDraw"></canvas>
           <canvas id="cLine"></canvas>
           <canvas id="cTrim"></canvas>
@@ -258,24 +265,26 @@ input[type=range]{width:150px;accent-color:var(--pink)}
 const VB=726.93,VBH=938.64,W=1000,H=Math.round(W*VBH/VB),K=W/VB,CX=W/2;
 const PX_PER_CM=7.2;                      /* croquis about 168 cm tall on a 1000 px wide sheet */
 const $=id=>document.getElementById(id);
-const cv={draw:$('cDraw'),trim:$('cTrim'),line:$('cLine'),over:$('cOver')};
+const cv={skin:$('cSkin'),draw:$('cDraw'),trim:$('cTrim'),line:$('cLine'),over:$('cOver')};
 for(const k in cv){cv[k].width=W;cv[k].height=H;}
 const d=cv.draw.getContext('2d',{willReadFrequently:true}),L=cv.line.getContext('2d'),o=cv.over.getContext('2d'),tr=cv.trim.getContext('2d',{willReadFrequently:true});   /* trims (ruffle, ric-rac) live on their own layer */
+const sk=cv.skin.getContext('2d');   /* skin tone under the paint */
 const gl=document.createElement('canvas');gl.width=W;gl.height=H;const gx=gl.getContext('2d');   /* garment lines only, for export */
 const bnd=document.createElement('canvas');bnd.width=W;bnd.height=H;const bx=bnd.getContext('2d',{willReadFrequently:true});
 
 const TOOLS=[['fill','Fill'],['ink','Fineliner'],['water','Watercolour'],['erase','Eraser'],['ruffle','Ruffle'],['ricrac','Ric-rac']];
-const COLORS=['#2b2326','#ffffff','#f6d9df','#e8698a','#b23a55','#f3e3c8','#c8a27a','#7a8f6a','#5f7fa6','#24324f'];
+const COLORS=['#2b2326','#ffffff','#f6d9df','#e8698a','#b23a55','#f3e3c8','#c8a27a','#7a8f6a','#8e6bb0','#5f7fa6','#24324f'];
 const MATS=[['solid','Solid'],['denim','Denim'],['knit','Knit'],['tweed','Tweed'],['plaid','Plaid']];
 const DESIGNS=[
   {id:'bodice',cat:'Bodice',name:'Lisa Bodice',zh:'V-neck, short sleeves',tags:'lisa bodice top v-neck short sleeve 上衣'},
-  {id:'skirt',cat:'Skirt',name:'Circle Skirt',zh:'Full circle, knee length',tags:'circle skirt full 圓裙 裙'},
-  {id:'zelda',cat:'Skirt',name:'Zelda Skirt',zh:'Fitted, flounce hem',tags:'zelda skirt fitted flounce mermaid trumpet 魚尾裙 裙'},
+  {id:'skirt',cat:'Bottoms',name:'Circle Skirt',zh:'Full circle, knee length',tags:'circle skirt full 圓裙 裙'},
+  {id:'zelda',cat:'Bottoms',name:'Zelda Skirt',zh:'Fitted, flounce hem',tags:'zelda skirt fitted flounce mermaid trumpet 魚尾裙 裙'},
   {id:'etoile',cat:'Bodice',name:'Etoile Bodice',zh:'Princess-seamed corset',tags:'etoile bodice top corset princess seam 馬甲 上衣'},
-  {id:'youthquake',cat:'Skirt',name:'Youthquake Skirt',zh:'A-line, button front, flap pockets',tags:'youthquake skirt a-line button pocket 裙'},
+  {id:'youthquake',cat:'Bottoms',name:'Youthquake Skirt',zh:'A-line, button front, flap pockets',tags:'youthquake skirt a-line button pocket 裙'},
+  {id:'yves',cat:'Bottoms',name:'Yves Trousers',zh:'Pleated, high waist, cuffed hem',tags:'yves trousers pants pleated high waist cuff 長褲 褲'},
   {id:'princess',cat:'Dress',name:'Princess Dress',zh:'Princess seams, button front',tags:'princess dress button collar long sleeve 洋裝 公主線'}];
-const S={tool:'fill',eraseMode:'all',color:'#e8698a',mat:'solid',photo:null,mirror:true,penOnly:false,size:'regular',zoom:1,
-  inside:{ink:false,water:true},pieces:{bodice:true,skirt:true,zelda:false,princess:false,etoile:false,youthquake:false},sizes:{ink:4,water:30,fill:0,erase:28,ruffle:24,ricrac:10}};
+const S={tool:'fill',eraseMode:'all',color:'#e8698a',mat:'solid',photo:null,mirror:true,penOnly:false,size:'regular',zoom:1,skin:0,
+  inside:{ink:false,water:true},pieces:{bodice:true,skirt:true,zelda:false,princess:false,etoile:false,youthquake:false,yves:false},sizes:{ink:4,water:30,fill:0,erase:28,ruffle:24,ricrac:10}};
 
 /* ---------- color helpers ---------- */
 const rgb=h=>{h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255]};
@@ -300,7 +309,8 @@ async function compose(){
   const lines=on.map(k=>C.pieces[k].lines).join(''),walls=on.map(k=>C.pieces[k].walls).join(''),sil=on.map(k=>silOf(C.pieces[k].sil)).join('');
   const nofill=C.css+'*{fill:none!important}',thick=nofill+'*{stroke-width:2.1px!important;stroke:#000!important}',solid='*{fill:#000;stroke:#000;stroke-width:1px}';
   const keep=C.css+'*{stroke-width:2.1px!important;stroke:#000!important}';   /* garments keep their own white fills, so a layer drawn on top hides the lines under it */
-  const [b,l0,s,bt,lt0]=await Promise.all([svgImg(C.body,nofill),svgImg(lines,C.css),svgImg(sil,solid),svgImg(C.body,thick),svgImg(walls,keep)]);
+  const [b,l0,s,bt,lt0,skm,cvm]=await Promise.all([svgImg(C.body,nofill),svgImg(lines,C.css),svgImg(sil,solid),svgImg(C.walls,thick),svgImg(walls,keep),
+    svgImg(silOf(C.skin),solid),svgImg(silOf(C.cover),solid)]);   /* body walls leave out detail lines (hair strands), so Fill colours the hair in one go */
   const l=inked(l0),lt=inked(lt0);
   if(id!==composeId)return;
   const lay=(x,body,ln)=>{x.clearRect(0,0,W,H);x.globalCompositeOperation='source-over';x.drawImage(body,0,0);
@@ -308,7 +318,18 @@ async function compose(){
   lay(L,b,l);lay(bx,bt,lt);
   sx.clearRect(0,0,W,H);if(on.length)sx.drawImage(s,0,0);silData=null;
   gx.clearRect(0,0,W,H);if(on.length)gx.drawImage(l,0,0);
-  bndData=null;
+  bndData=null;skinM={skin:skm,cover:cvm,sil:on.length?s:null};paintSkin();
+}
+/* skin tone: slider 0 = none, 1..100 runs light to deep */
+const TONES=['#fbe9df','#f3d0b8','#e7b48f','#d29a6f','#b57a52','#8d5a3b','#613d28','#3e281c'];
+const toneOf=v=>{if(!v)return null;const t=(v-1)/99*(TONES.length-1),i=Math.min(TONES.length-2,Math.floor(t)),f=t-i,a=rgb(TONES[i]),b=rgb(TONES[i+1]);
+  return'#'+a.map((c,j)=>Math.round(c+(b[j]-c)*f).toString(16).padStart(2,'0')).join('');};
+let skinM=null;
+function paintSkin(){
+  sk.globalCompositeOperation='source-over';sk.clearRect(0,0,W,H);const t=toneOf(S.skin);if(!t||!skinM)return;
+  sk.fillStyle=t;sk.fillRect(0,0,W,H);sk.globalCompositeOperation='destination-in';sk.drawImage(skinM.skin,0,0);
+  sk.globalCompositeOperation='destination-out';sk.drawImage(skinM.cover,0,0);if(skinM.sil)sk.drawImage(skinM.sil,0,0);   /* shoes, bra and garments cover the skin */
+  sk.globalCompositeOperation='source-over';
 }
 let bndData=null,silData=null;
 const silc=document.createElement('canvas');silc.width=W;silc.height=H;const sx=silc.getContext('2d',{willReadFrequently:true});
@@ -615,7 +636,7 @@ function buildUI(){
   $('penonly').onclick=()=>{S.penOnly=!S.penOnly;sync();toast(S.penOnly?'Pen only: the S Pen draws, fingers move the page':'Fingers and pen both draw');};
   document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>switchSize(b.dataset.size));
   $('designs').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;const k=b.dataset.d,on=!S.pieces[k],cat=DESIGNS.find(g=>g.id===k).cat;
-    if(on)DESIGNS.forEach(g=>{if(g.cat===cat||g.cat==='Dress'||cat==='Dress')S.pieces[g.id]=false;});   /* one bodice, one skirt at a time; a dress replaces both */
+    if(on)DESIGNS.forEach(g=>{if(g.cat===cat||g.cat==='Dress'||cat==='Dress')S.pieces[g.id]=false;});   /* one top, one bottom at a time; a dress replaces both */
     S.pieces[k]=on;buildDesigns();compose();prefs();};
   $('search').oninput=buildDesigns;
   $('drawerTab').onclick=()=>{$('drawer').classList.toggle('closed');$('drawerTab').setAttribute('aria-label',$('drawer').classList.contains('closed')?'Show designs':'Hide designs');setTimeout(layout,260);};
@@ -680,7 +701,7 @@ addEventListener('resize',layout);
 let exportCanvas=null;
 function renderExport(){
   const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
-  x.fillStyle='#fff';x.fillRect(0,0,W,H);x.drawImage(cv.draw,0,0);
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);if($('incBody').checked)x.drawImage(cv.skin,0,0);x.drawImage(cv.draw,0,0);
   x.drawImage($('incBody').checked?cv.line:gl,0,0);x.drawImage(cv.trim,0,0);   /* trims sit over the design lines */
   exportCanvas=c;$('outImg').src=c.toDataURL('image/png');
 }
@@ -699,7 +720,7 @@ window.claude?.use?.('downloads').then(ns=>{downloads=ns;$('savePng').hidden=!ns
 let saveT=0;
 function saveNow(){put('paperdoll-draw-'+S.size,cv.draw.toDataURL());put('paperdoll-trim-'+S.size,cv.trim.toDataURL());}
 function save(){clearTimeout(saveT);saveT=setTimeout(saveNow,700);}
-function prefs(){put('paperdoll-prefs',JSON.stringify({size:S.size,mirror:S.mirror,penOnly:S.penOnly,inside:S.inside,pieces:S.pieces,color:S.color}));}
+function prefs(){put('paperdoll-prefs',JSON.stringify({size:S.size,mirror:S.mirror,penOnly:S.penOnly,inside:S.inside,pieces:S.pieces,color:S.color,skin:S.skin}));}
 function toast(msg){const el=$('toast');el.textContent=msg;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,3200);}
 let sampleShown=false;
 function hideSample(){if(sampleShown){sampleShown=false;}}
@@ -712,7 +733,7 @@ function sample(){
   /* example colourway so the first view shows what the tool does */
   const keep={c:S.color,m:S.mat,p:S.photo,mi:S.mirror};S.mirror=true;S.photo=null;
   const seeds=S.size==='regular'?{bodice:[500,445],sleeve:[605,351],skirt:[500,700]}:{bodice:[500,395],sleeve:[619,330],skirt:[500,670]};
-  for(const [k,c,m] of [['etoile','#f3e3c8','knit'],['youthquake','#e8698a','plaid']])if(S.pieces[k]){S.color=c;S.mat=m;{const P=CROQUIS[S.size].pieces[k];fillPanels(P.box,P.sil);}}   /* top first: the skirt box reaches up under it */
+  for(const [k,c,m] of [['etoile','#f3e3c8','knit'],['youthquake','#e8698a','plaid'],['yves','#e8698a','plaid']])if(S.pieces[k]){S.color=c;S.mat=m;{const P=CROQUIS[S.size].pieces[k];fillPanels(P.box,P.sil);}}   /* top first: the skirt box reaches up under it */
   if(S.pieces.skirt){S.color='#e8698a';S.mat='plaid';doFill(...seeds.skirt);}
   if(S.pieces.zelda){S.color='#e8698a';S.mat='plaid';fillPanels(CROQUIS[S.size].pieces.zelda.box);}
   if(S.pieces.bodice){S.color='#f3e3c8';S.mat='knit';doFill(...seeds.bodice);doFill(...seeds.sleeve);}
@@ -724,9 +745,10 @@ function sample(){
 /* ---------- boot ---------- */
 (async()=>{
   try{const pr=JSON.parse(store('paperdoll-prefs')||'null');
-    if(pr){S.size=pr.size==='curvier'?'curvier':'regular';S.mirror=pr.mirror!==false;S.penOnly=!!pr.penOnly;if(pr.pieces)Object.assign(S.pieces,pr.pieces);if(pr.inside)Object.assign(S.inside,pr.inside);if(pr.color)S.color=pr.color;}}catch(e){}
+    if(pr){S.size=pr.size==='curvier'?'curvier':'regular';S.mirror=pr.mirror!==false;S.penOnly=!!pr.penOnly;if(pr.pieces)Object.assign(S.pieces,pr.pieces);if(pr.inside)Object.assign(S.inside,pr.inside);if(pr.color)S.color=pr.color;if(pr.skin>=0&&pr.skin<=100)S.skin=+pr.skin;}}catch(e){}
   try{const ps=JSON.parse(store('paperdoll-photos')||'[]');for(const p of ps){try{photos.push({...p,img:await loadImg(p.url)});}catch(e){}}}catch(e){}
-  $('custom').value=S.color;
+  $('custom').value=S.color;$('skin').value=S.skin;
+  $('skin').oninput=e=>{S.skin=+e.target.value;paintSkin();prefs();};
   if(innerWidth<=760)$('drawer').classList.add('closed');
   buildUI();buildMats();buildDesigns();sync();layout();
   if(!store('paperdoll-tip-swatch'))$('swatchTip').hidden=false;
