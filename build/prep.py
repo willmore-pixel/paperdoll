@@ -6,7 +6,8 @@ SRC = ROOT + 'src/'
 DES = ROOT + 'design/'   # canonical design folder
 # piece id -> design file stem ('<stem>1.svg' Regular, '<stem>2.svg' Curvier), class prefix
 DESIGNS = [('bodice', 'lisa bodice', 'b'), ('skirt', 'circle skirt', 's'), ('zelda', 'zelda skirt', 'z'), ('princess', 'princess dress', 'p'),
-           ('etoile', 'etoile bodice', 'e'), ('youthquake', 'youthquake skirt', 'y')]
+           ('etoile', 'etoile bodice', 'e'), ('youthquake', 'youthquake skirt', 'y'),
+           ('yves', 'yves trouser', 'v')]
 SHAPES = r'path|line|polygon|polyline|rect|circle|ellipse'
 
 def body_of(fn):
@@ -47,8 +48,16 @@ def box_of(ds, pad=8):
     x0, y0 = min(a for a, b in p) - pad, min(b for a, b in p) - pad
     return [math.floor(x0), math.floor(y0), math.ceil(max(a for a, b in p) + pad - x0), math.ceil(max(b for a, b in p) + pad - y0)]
 
+def find_design(fn):
+    """'<stem>1.svg' also matches 'Stem_1.svg', 'stem-1.svg', 'Stem 1.svg' (case, spaces, _ and - ignored)."""
+    import os
+    key = lambda f: re.sub(r'[\s_-]+', '', f.lower())
+    hits = [f for f in os.listdir(DES) if key(f) == key(fn)]
+    assert len(hits) == 1, (fn, hits)
+    return DES + hits[0]
+
 def design(fn, pre):
-    s = open(DES + fn).read().replace('\r', '')
+    s = open(find_design(fn)).read().replace('\r', '')
     css = re.sub(r'\s+', ' ', re.search(r'<style>(.*?)</style>', s, re.S).group(1))
     css = re.sub(r'\s*([{};:,])\s*', r'\1', css).strip()
     ren = {c: '%s-%s' % (pre, c) for c in set(re.findall(r'\.([A-Za-z][\w-]*)', css))}   # keep each design's classes apart in the shared stylesheet

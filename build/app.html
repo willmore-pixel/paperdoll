@@ -269,13 +269,14 @@ const COLORS=['#2b2326','#ffffff','#f6d9df','#e8698a','#b23a55','#f3e3c8','#c8a2
 const MATS=[['solid','Solid'],['denim','Denim'],['knit','Knit'],['tweed','Tweed'],['plaid','Plaid']];
 const DESIGNS=[
   {id:'bodice',cat:'Bodice',name:'Lisa Bodice',zh:'V-neck, short sleeves',tags:'lisa bodice top v-neck short sleeve 上衣'},
-  {id:'skirt',cat:'Skirt',name:'Circle Skirt',zh:'Full circle, knee length',tags:'circle skirt full 圓裙 裙'},
-  {id:'zelda',cat:'Skirt',name:'Zelda Skirt',zh:'Fitted, flounce hem',tags:'zelda skirt fitted flounce mermaid trumpet 魚尾裙 裙'},
+  {id:'skirt',cat:'Bottoms',name:'Circle Skirt',zh:'Full circle, knee length',tags:'circle skirt full 圓裙 裙'},
+  {id:'zelda',cat:'Bottoms',name:'Zelda Skirt',zh:'Fitted, flounce hem',tags:'zelda skirt fitted flounce mermaid trumpet 魚尾裙 裙'},
   {id:'etoile',cat:'Bodice',name:'Etoile Bodice',zh:'Princess-seamed corset',tags:'etoile bodice top corset princess seam 馬甲 上衣'},
-  {id:'youthquake',cat:'Skirt',name:'Youthquake Skirt',zh:'A-line, button front, flap pockets',tags:'youthquake skirt a-line button pocket 裙'},
+  {id:'youthquake',cat:'Bottoms',name:'Youthquake Skirt',zh:'A-line, button front, flap pockets',tags:'youthquake skirt a-line button pocket 裙'},
+  {id:'yves',cat:'Bottoms',name:'Yves Trousers',zh:'Pleated, high waist, cuffed hem',tags:'yves trousers pants pleated high waist cuff 長褲 褲'},
   {id:'princess',cat:'Dress',name:'Princess Dress',zh:'Princess seams, button front',tags:'princess dress button collar long sleeve 洋裝 公主線'}];
 const S={tool:'fill',eraseMode:'all',color:'#e8698a',mat:'solid',photo:null,mirror:true,penOnly:false,size:'regular',zoom:1,
-  inside:{ink:false,water:true},pieces:{bodice:true,skirt:true,zelda:false,princess:false,etoile:false,youthquake:false},sizes:{ink:4,water:30,fill:0,erase:28,ruffle:24,ricrac:10}};
+  inside:{ink:false,water:true},pieces:{bodice:true,skirt:true,zelda:false,princess:false,etoile:false,youthquake:false,yves:false},sizes:{ink:4,water:30,fill:0,erase:28,ruffle:24,ricrac:10}};
 
 /* ---------- color helpers ---------- */
 const rgb=h=>{h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255]};
@@ -615,7 +616,7 @@ function buildUI(){
   $('penonly').onclick=()=>{S.penOnly=!S.penOnly;sync();toast(S.penOnly?'Pen only: the S Pen draws, fingers move the page':'Fingers and pen both draw');};
   document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>switchSize(b.dataset.size));
   $('designs').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;const k=b.dataset.d,on=!S.pieces[k],cat=DESIGNS.find(g=>g.id===k).cat;
-    if(on)DESIGNS.forEach(g=>{if(g.cat===cat||g.cat==='Dress'||cat==='Dress')S.pieces[g.id]=false;});   /* one bodice, one skirt at a time; a dress replaces both */
+    if(on)DESIGNS.forEach(g=>{if(g.cat===cat||g.cat==='Dress'||cat==='Dress')S.pieces[g.id]=false;});   /* one top, one bottom at a time; a dress replaces both */
     S.pieces[k]=on;buildDesigns();compose();prefs();};
   $('search').oninput=buildDesigns;
   $('drawerTab').onclick=()=>{$('drawer').classList.toggle('closed');$('drawerTab').setAttribute('aria-label',$('drawer').classList.contains('closed')?'Show designs':'Hide designs');setTimeout(layout,260);};
@@ -712,7 +713,7 @@ function sample(){
   /* example colourway so the first view shows what the tool does */
   const keep={c:S.color,m:S.mat,p:S.photo,mi:S.mirror};S.mirror=true;S.photo=null;
   const seeds=S.size==='regular'?{bodice:[500,445],sleeve:[605,351],skirt:[500,700]}:{bodice:[500,395],sleeve:[619,330],skirt:[500,670]};
-  for(const [k,c,m] of [['etoile','#f3e3c8','knit'],['youthquake','#e8698a','plaid']])if(S.pieces[k]){S.color=c;S.mat=m;{const P=CROQUIS[S.size].pieces[k];fillPanels(P.box,P.sil);}}   /* top first: the skirt box reaches up under it */
+  for(const [k,c,m] of [['etoile','#f3e3c8','knit'],['youthquake','#e8698a','plaid'],['yves','#e8698a','plaid']])if(S.pieces[k]){S.color=c;S.mat=m;{const P=CROQUIS[S.size].pieces[k];fillPanels(P.box,P.sil);}}   /* top first: the skirt box reaches up under it */
   if(S.pieces.skirt){S.color='#e8698a';S.mat='plaid';doFill(...seeds.skirt);}
   if(S.pieces.zelda){S.color='#e8698a';S.mat='plaid';fillPanels(CROQUIS[S.size].pieces.zelda.box);}
   if(S.pieces.bodice){S.color='#f3e3c8';S.mat='knit';doFill(...seeds.bodice);doFill(...seeds.sleeve);}
