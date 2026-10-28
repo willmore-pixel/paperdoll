@@ -563,7 +563,7 @@ sheet.addEventListener('pointerup',end);sheet.addEventListener('pointercancel',e
 
 /* ---------- photo swatches (Swatch Kit) ---------- */
 const SK_TEXT={camHint:'Fill the frame with {cm} × {cm} cm of fabric',camSmall:'The ruler marks are centimetres. Lay a ruler beside it to line up.',
-  cropHint:'Drag and pinch the photo so {cm} × {cm} cm fills the frame',cropSmall:'The ruler marks are centimetres',cancel:'Cancel',use:'Use',shot:'Take photo',native:'Camera app'};
+  cropHint:'Drag and pinch the photo so {cm} × {cm} cm fills the frame',cropSmall:'The ruler marks are centimetres',cancel:'Cancel',use:'Use',shot:'Take photo',native:'Camera app',wake:'Turn camera on'};
 function loadImg(src){return new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;im.src=src;});}
 async function addPhotoFromFile(file){   // file: a photo, or "camera" for the live camera with the reference frame
   const cm=Math.min(100,Math.max(2,+$('frameCm').value||30));
