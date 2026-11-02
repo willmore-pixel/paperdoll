@@ -235,9 +235,9 @@ input[type=range]{width:150px;accent-color:var(--pink)}
           <div class="ring" id="ring" hidden></div>
         </div>
       </div>
-      <div class="hist" id="hist"></div>
-      <div class="zoom"><button id="zout" aria-label="Zoom out">−</button><span id="zval">100%</span><button id="zin" aria-label="Zoom in">+</button></div>
     </main>
+    <div class="hist" id="hist"></div>   <!-- outside the scrolling stage, so they stay put while zoomed -->
+    <div class="zoom"><button id="zout" aria-label="Zoom out">−</button><span id="zval">100%</span><button id="zin" aria-label="Zoom in">+</button></div>
 
     <aside class="drawer" id="drawer" aria-label="Designs">
       <button class="tab" id="drawerTab" aria-label="Hide designs"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -276,7 +276,7 @@ input[type=range]{width:150px;accent-color:var(--pink)}
       <div class="field" id="fColor"><span class="label">Colour</span><div class="mats" id="swatches"></div><input type="color" id="custom" value="#e8698a" aria-label="Custom colour"></div>
       <div class="field" id="fErase" hidden><span class="label">Erase</span><div class="mats" id="eraseModes">
         <button class="mat" data-e="all">Everything</button><button class="mat" data-e="trims">Trims only</button><button class="mat" data-e="paint">Paint only</button></div></div>
-      <div class="field" id="fSize"><span class="label">Size</span><input type="range" id="size" min="1" max="80"><span class="val" id="sizeVal"></span><span class="dot" id="sizeDot" aria-hidden="true"><i></i></span><label class="chk" id="fInside" title="Keep paint inside the outlined area where the stroke starts"><input type="checkbox" id="inside">Clip</label></div>
+      <div class="field" id="fSize"><span class="label">Size</span><input type="range" id="size" min="1" max="80"><span class="val" id="sizeVal"></span><span class="dot" id="sizeDot" aria-hidden="true"><i></i></span><label class="chk" id="fInside" title="Keep the stroke inside the outlined area where it starts"><input type="checkbox" id="inside">Clip</label></div>
     </div>
     <div class="row" id="fMat">
       <span class="label">Swatches</span>
@@ -614,7 +614,7 @@ const has=k=>!!CROQUIS[S.size].pieces[k];                                  /* Sc
 const scoutTop=()=>S.pieces.scoutbodice||S.pieces.scoutprincess;            /* Scout sleeves fit only the Scout armholes */
 const shown=k=>S.pieces[k]&&has(k)&&(DESIGNS.find(g=>g.id===k).cat!=='Sleeves'||scoutTop());
 const S={tool:'fill',eraseMode:'all',color:'#e8698a',mat:'solid',photo:null,mirror:true,penOnly:false,size:'regular',zoom:1,skin:0,
-  inside:{ink:false,water:true},pieces:{bodice:true,skirt:true,zelda:false,princess:false,etoile:false,youthquake:false,yves:false,
+  inside:{ink:false,water:true,erase:false},pieces:{bodice:true,skirt:true,zelda:false,princess:false,etoile:false,youthquake:false,yves:false,
     scoutbodice:false,scoutprincess:false,scoutcircle:false,scoutpleats:false,scoutscallop:false,scoutshort:false,scoutgather:false,scoutpuff:false,scoutbow:false},sizes:{ink:4,water:30,fill:0,erase:28,ruffle:24,ricrac:10}};
 
 /* ---------- color helpers ---------- */
@@ -771,6 +771,11 @@ const sheet=$('sheet'),stage=$('stage');
 let act=null;
 const pos=e=>{const r=cv.over.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height,p:e.pressure||.5};};
 function strokeSeg(a,c,b,w){
+  if(act&&act.eraseClip){   /* clipped eraser: stroke into the buffer, keep the part inside the region, cut that out */
+    bfx.clearRect(0,0,W,H);both(bfx,x=>{x.save();x.lineCap='round';x.lineJoin='round';x.lineWidth=w;x.strokeStyle='#000';
+      x.beginPath();x.moveTo(a.x,a.y);x.quadraticCurveTo(c.x,c.y,b.x,b.y);x.stroke();x.restore();});clipBuf();
+    for(const t of S.eraseMode==='trims'?[tr]:S.eraseMode==='paint'?[d]:[d,tr]){t.save();t.globalCompositeOperation='destination-out';t.drawImage(buf,0,0);t.restore();}
+    bfx.clearRect(0,0,W,H);return;}
   const targets=act&&act.inkBuf?[bfx]:S.tool!=='erase'?[d]:S.eraseMode==='trims'?[tr]:S.eraseMode==='paint'?[d]:[d,tr];
   for(const t of targets)both(t,x=>{x.save();x.lineCap='round';x.lineJoin='round';x.lineWidth=w;
     if(S.tool==='erase'){x.globalCompositeOperation='destination-out';x.strokeStyle='#000';}else x.strokeStyle=S.color;
@@ -812,7 +817,7 @@ function regionClip(sx,sy){
         if(y<H-1){if(ok(i+W)){if(!dn){st.push(x,y+1);dn=true;}}else dn=false;}x++;i++;}}};
   flood(sx,sy);if(S.mirror)flood(W-1-sx,sy);
   let n=0;for(let i=0;i<mask.length;i++)n+=mask[i];
-  if(!n||n>W*H*.6){clipOn=false;return;}            /* started on a line or on the open sheet: paint freely */
+  if(!n){clipOn=false;return;}                      /* started on a line: paint freely; on the open sheet it stays in the background */
   const m2=mask.slice();for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;if(!mask[i]&&(mask[i-1]||mask[i+1]||mask[i-W]||mask[i+W]))m2[i]=1;}
   const D=clx.createImageData(W,H);for(let i=0;i<m2.length;i++)if(m2[i])D.data[i*4+3]=255;clx.putImageData(D,0,0);clipOn=true;clipData=D.data;
   const u=`url(${clipc.toDataURL()})`,st=cv.over.style;st.maskImage=st.webkitMaskImage=u;st.maskSize=st.webkitMaskSize='100% 100%';   /* live preview clipped by CSS, no per-move cost */
@@ -862,6 +867,7 @@ sheet.addEventListener('pointerdown',e=>{
   if(isDab()){if(BUF[S.tool]){if(S.inside[S.tool])regionClip(p.x,p.y);else clipOn=false;startBuf();dabSeg(p,p,p,p.p,p.p);showBuf();}}
   else if(S.tool==='ink'||S.tool==='erase'){
     if(S.tool==='ink'&&S.inside.ink){regionClip(p.x,p.y);if(clipOn){act.inkBuf=true;bfx.clearRect(0,0,W,H);}}
+    if(S.tool==='erase'&&S.inside.erase){regionClip(p.x,p.y);act.eraseClip=clipOn;cv.over.style.maskImage=cv.over.style.webkitMaskImage='';}
     strokeSeg(p,p,{x:p.x+.01,y:p.y},widthFor(p.p));if(act.inkBuf)showBuf();}
 });
 sheet.addEventListener('pointermove',e=>{
