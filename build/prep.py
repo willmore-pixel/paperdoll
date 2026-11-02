@@ -101,7 +101,7 @@ for key, n in [('regular', '1'), ('curvier', '2')]:
     skin = [d for k, d in named if k.startswith('skin')]
     assert skin, fn + ': no skin'
     out[key] = {'css': css, 'body': ''.join(allp), 'walls': ''.join(walls), 'skin': skin,
-                'cover': [d for k, d in named if not k.startswith(('skin', 'hair'))], 'pieces': {}}   # shoes, bra... sit over the skin
+                'cover': [d for k, d in named if not k.startswith(('skin', 'hair'))], 'hair': [d for k, d in named if k.startswith('hair')], 'pieces': {}}   # shoes, bra... sit over the skin
     for pid, stem, pre in DESIGNS:
         key_ = lambda f: re.sub(r'[\s_-]+', '', f.lower())
         if pid in OPTIONAL and not any(key_(f) == key_(stem + n + '.svg') for f in os.listdir(DES)): continue

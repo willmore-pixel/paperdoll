@@ -215,6 +215,7 @@ input[type=range]{width:150px;accent-color:var(--pink)}
       <div class="sizeTag"><span id="sizeTag"></span><label class="skinc" title="Skin tone of the croquis (far left: none)">Skin<input type="range" id="skin" min="0" max="100" step="1" aria-label="Skin tone"></label></div>
       <div class="stage-inner">
         <div class="sheet" id="sheet">
+          <canvas id="cBg"></canvas>
           <canvas id="cSkin"></canvas>
           <canvas id="cDraw"></canvas>
           <canvas id="cLine"></canvas>
@@ -305,9 +306,11 @@ input[type=range]{width:150px;accent-color:var(--pink)}
 const VB=726.93,VBH=938.64,W=1000,H=Math.round(W*VBH/VB),K=W/VB,CX=W/2;
 const PX_PER_CM=7.2;                      /* croquis about 168 cm tall on a 1000 px wide sheet */
 const $=id=>document.getElementById(id);
-const cv={skin:$('cSkin'),draw:$('cDraw'),trim:$('cTrim'),line:$('cLine'),over:$('cOver')};
+const cv={bg:$('cBg'),skin:$('cSkin'),draw:$('cDraw'),trim:$('cTrim'),line:$('cLine'),over:$('cOver')};
 for(const k in cv){cv[k].width=W;cv[k].height=H;}
-const d=cv.draw.getContext('2d',{willReadFrequently:true}),L=cv.line.getContext('2d'),o=cv.over.getContext('2d'),tr=cv.trim.getContext('2d',{willReadFrequently:true});   /* trims (ruffle, ric-rac) live on their own layer */
+const DRAW=cv.draw.getContext('2d',{willReadFrequently:true}),BG=cv.bg.getContext('2d',{willReadFrequently:true});
+let d=DRAW;   /* the paint layer a stroke goes to: BG when it starts on the empty paper around the figure */
+const L=cv.line.getContext('2d'),o=cv.over.getContext('2d'),tr=cv.trim.getContext('2d',{willReadFrequently:true});   /* trims (ruffle, ric-rac) live on their own layer */
 const sk=cv.skin.getContext('2d');   /* skin tone under the paint */
 const gl=document.createElement('canvas');gl.width=W;gl.height=H;const gx=gl.getContext('2d');   /* garment lines only, for export */
 const bnd=document.createElement('canvas');bnd.width=W;bnd.height=H;const bx=bnd.getContext('2d',{willReadFrequently:true});
@@ -362,8 +365,8 @@ async function compose(){
   const lines=on.map(k=>C.pieces[k].lines).join(''),walls=on.map(k=>C.pieces[k].walls).join(''),sil=on.map(k=>silOf(C.pieces[k].sil)).join('');
   const nofill=C.css+'*{fill:none!important}',thick=nofill+'*{stroke-width:2.1px!important;stroke:#000!important}',solid='*{fill:#000;stroke:#000;stroke-width:1px}';
   const keep=C.css+'*{stroke-width:2.1px!important;stroke:#000!important}';   /* garments keep their own white fills, so a layer drawn on top hides the lines under it */
-  const [b,l0,s,bt,lt0,skm,cvm]=await Promise.all([svgImg(C.body,nofill),svgImg(lines,C.css),svgImg(sil,solid),svgImg(C.walls,thick),svgImg(walls,keep),
-    svgImg(silOf(C.skin),solid),svgImg(silOf(C.cover),solid)]);   /* body walls leave out detail lines (hair strands), so Fill colours the hair in one go */
+  const [b,l0,s,bt,lt0,skm,cvm,fig]=await Promise.all([svgImg(C.body,nofill),svgImg(lines,C.css),svgImg(sil,solid),svgImg(C.walls,thick),svgImg(walls,keep),
+    svgImg(silOf(C.skin),solid),svgImg(silOf(C.cover),solid),svgImg(silOf([...C.skin,...C.hair,...C.cover])+sil,solid)]);   /* body walls leave out detail lines (hair strands), so Fill colours the hair in one go */
   const l=inked(l0),lt=inked(lt0);
   if(id!==composeId)return;
   const lay=(x,body,ln)=>{x.clearRect(0,0,W,H);x.globalCompositeOperation='source-over';x.drawImage(body,0,0);
@@ -372,6 +375,9 @@ async function compose(){
   sx.clearRect(0,0,W,H);if(on.length)sx.drawImage(s,0,0);silData=null;
   gx.clearRect(0,0,W,H);if(on.length)gx.drawImage(l,0,0);
   bndData=null;skinM={skin:skm,cover:cvm,sil:on.length?s:null};paintSkin();
+  fx.clearRect(0,0,W,H);fx.drawImage(fig,0,0);figData=fx.getImageData(0,0,W,H).data;
+  const inv=document.createElement('canvas');inv.width=W;inv.height=H;const ix=inv.getContext('2d');ix.fillRect(0,0,W,H);ix.globalCompositeOperation='destination-out';ix.drawImage(fig,0,0);
+  const u=`url(${inv.toDataURL()})`,st=cv.bg.style;st.maskImage=st.webkitMaskImage=u;st.maskSize=st.webkitMaskSize='100% 100%';   /* the background shows only around the figure */
 }
 /* skin tone: slider 0 = none, 1..100 runs light to deep */
 const TONES=['#fbe9df','#f3d0b8','#e7b48f','#d29a6f','#b57a52','#8d5a3b','#613d28','#3e281c'];
@@ -384,7 +390,9 @@ function paintSkin(){
   sk.globalCompositeOperation='destination-out';sk.drawImage(skinM.cover,0,0);if(skinM.sil)sk.drawImage(skinM.sil,0,0);   /* shoes, bra and garments cover the skin */
   sk.globalCompositeOperation='source-over';
 }
-let bndData=null,silData=null;
+let bndData=null,silData=null,figData=null;
+const figc=document.createElement('canvas');figc.width=W;figc.height=H;const fx=figc.getContext('2d',{willReadFrequently:true});
+const onBg=(x,y)=>!!figData&&x>=0&&y>=0&&x<W&&y<H&&figData[((y|0)*W+(x|0))*4+3]<128;   /* empty paper, not the croquis or a garment */
 const silc=document.createElement('canvas');silc.width=W;silc.height=H;const sx=silc.getContext('2d',{willReadFrequently:true});
 const silHit=(x,y)=>(silData||(silData=sx.getImageData(0,0,W,H).data))[((y|0)*W+(x|0))*4+3]>128;
 const boundary=()=>bndData||(bndData=bx.getImageData(0,0,W,H).data);
@@ -433,8 +441,8 @@ function paint(){
 
 /* ---------- history ---------- */
 const undoS=[],redoS=[];
-const grab=()=>({d:d.getImageData(0,0,W,H),t:tr.getImageData(0,0,W,H)});
-const restore=st=>{d.putImageData(st.d,0,0);tr.putImageData(st.t,0,0);};
+const grab=()=>({d:DRAW.getImageData(0,0,W,H),b:BG.getImageData(0,0,W,H),t:tr.getImageData(0,0,W,H)});
+const restore=st=>{DRAW.putImageData(st.d,0,0);BG.putImageData(st.b,0,0);tr.putImageData(st.t,0,0);};
 function snap(){undoS.push(grab());if(undoS.length>15)undoS.shift();redoS.length=0;syncHist();}
 function syncHist(){$('undo').disabled=!undoS.length;$('redo').disabled=!redoS.length;}
 function undo(){if(!undoS.length)return;redoS.push(grab());restore(undoS.pop());syncHist();save();}
@@ -460,7 +468,8 @@ function renderRicrac(x,pts,s,color){
 
 /* ---------- flood fill against the croquis lines ---------- */
 function doFill(sx,sy,bg){   /* bg: a tap outside every outline paints the background */
-  const D=d.getImageData(0,0,W,H),dd=D.data,td=boundary(),mask=new Uint8Array(W*H);
+  const D=d.getImageData(0,0,W,H),dd=D.data,td=d===BG?new Uint8Array(W*H*4):boundary(),mask=new Uint8Array(W*H);   /* the background layer has no outlines in it */
+  if(d===BG)bg=true;
   let anyOpaque=false;
   const flood=(x0,y0)=>{
     x0|=0;y0|=0;if(x0<0||y0<0||x0>=W||y0>=H)return;const i0=y0*W+x0;if(mask[i0]||td[i0*4+3]>90)return;
@@ -584,12 +593,13 @@ sheet.addEventListener('pointerdown',e=>{
   if(S.penOnly&&e.pointerType==='touch'){act={pan:true,id:e.pointerId,x:e.clientX,y:e.clientY,sl:stage.scrollLeft,st:stage.scrollTop};return;}
   e.preventDefault();sheet.setPointerCapture(e.pointerId);
   const p=pos(e);hideSample();
-  if(S.tool==='fill'){snap();if(doFill(p.x,p.y,true))save();else{undoS.pop();syncHist();toast('Tap inside an outlined area to fill it');}return;}
+  if(onBg(p.x,p.y)&&['fill','ink','water','erase'].includes(S.tool)&&!(S.tool==='erase'&&S.eraseMode==='trims'))d=BG;
+  if(S.tool==='fill'){snap();const ok=doFill(p.x,p.y,true);d=DRAW;if(ok)save();else{undoS.pop();syncHist();toast('Tap inside an outlined area to fill it');}return;}
   snap();act={id:e.pointerId,pts:[p],mid:p,acc:1e9,lp:p.p,ang:null,n:0};
-  if(isDab()){if(BUF[S.tool]){if(S.inside[S.tool])regionClip(p.x,p.y);else clipOn=false;startBuf();dabSeg(p,p,p,p.p,p.p);showBuf();}}
+  if(isDab()){if(BUF[S.tool]){if(S.inside[S.tool]&&d!==BG)regionClip(p.x,p.y);else clipOn=false;startBuf();dabSeg(p,p,p,p.p,p.p);showBuf();}}
   else if(S.tool==='ink'||S.tool==='erase'){
-    if(S.tool==='ink'&&S.inside.ink){regionClip(p.x,p.y);if(clipOn){act.inkBuf=true;bfx.clearRect(0,0,W,H);}}
-    if(S.tool==='erase'&&S.inside.erase){regionClip(p.x,p.y);act.eraseClip=clipOn;cv.over.style.maskImage=cv.over.style.webkitMaskImage='';}
+    if(S.tool==='ink'&&S.inside.ink&&d!==BG){regionClip(p.x,p.y);if(clipOn){act.inkBuf=true;bfx.clearRect(0,0,W,H);}}
+    if(S.tool==='erase'&&S.inside.erase&&d!==BG){regionClip(p.x,p.y);act.eraseClip=clipOn;cv.over.style.maskImage=cv.over.style.webkitMaskImage='';}
     strokeSeg(p,p,{x:p.x+.01,y:p.y},widthFor(p.p));if(act.inkBuf)showBuf();}
 });
 sheet.addEventListener('pointermove',e=>{
@@ -616,7 +626,7 @@ const end=e=>{
     if(act.inkBuf){clipBuf();d.drawImage(buf,0,0);bfx.clearRect(0,0,W,H);o.clearRect(0,0,W,H);cv.over.style.maskImage=cv.over.style.webkitMaskImage='';}
     save();
   }
-  act=null;
+  act=null;d=DRAW;
 };
 sheet.addEventListener('pointerup',end);sheet.addEventListener('pointercancel',end);
 
@@ -704,7 +714,7 @@ function buildUI(){
   $('drawerTab').onclick=()=>{$('drawer').classList.toggle('closed');$('drawerTab').setAttribute('aria-label',$('drawer').classList.contains('closed')?'Show designs':'Hide designs');setTimeout(layout,260);};
   $('undo').onclick=undo;$('redo').onclick=redo;
   let armed=0;$('clear').onclick=()=>{const b=$('clear');
-    if(armed){clearTimeout(armed);armed=0;b.lastChild.textContent='Clear';b.classList.remove('on');snap();d.clearRect(0,0,W,H);tr.clearRect(0,0,W,H);hideSample();save();return;}
+    if(armed){clearTimeout(armed);armed=0;b.lastChild.textContent='Clear';b.classList.remove('on');snap();d.clearRect(0,0,W,H);BG.clearRect(0,0,W,H);tr.clearRect(0,0,W,H);hideSample();save();return;}
     b.lastChild.textContent='Tap again to clear';b.classList.add('on');if(phone.matches)toast('Tap again to clear the page');
     armed=setTimeout(()=>{armed=0;b.lastChild.textContent='Clear';b.classList.remove('on');},3000);};
   $('export').onclick=()=>{renderExport();$('modal').hidden=false;};
@@ -741,12 +751,13 @@ const put=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
 async function switchSize(sz){
   if(sz===S.size)return;
   clearTimeout(saveT);saveNow();
-  S.size=sz;undoS.length=0;redoS.length=0;syncHist();d.clearRect(0,0,W,H);tr.clearRect(0,0,W,H);
+  S.size=sz;undoS.length=0;redoS.length=0;syncHist();d.clearRect(0,0,W,H);BG.clearRect(0,0,W,H);tr.clearRect(0,0,W,H);
   buildDesigns();sync();await compose();await loadDrawing();
 }
 async function loadDrawing(){
   const saved=store('paperdoll-draw-'+S.size);
   if(saved){try{const im=await loadImg(saved);d.clearRect(0,0,W,H);d.drawImage(im,0,0);}catch(e){}
+    const sb=store('paperdoll-bg-'+S.size);if(sb){try{const im=await loadImg(sb);BG.clearRect(0,0,W,H);BG.drawImage(im,0,0);}catch(e){}}
     const st=store('paperdoll-trim-'+S.size);if(st){try{const im=await loadImg(st);tr.clearRect(0,0,W,H);tr.drawImage(im,0,0);}catch(e){}}}
   else sample();
 }
@@ -764,7 +775,9 @@ addEventListener('resize',layout);
 let exportCanvas=null;
 function renderExport(){
   const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
-  x.fillStyle='#fff';x.fillRect(0,0,W,H);if($('incBody').checked)x.drawImage(cv.skin,0,0);x.drawImage(cv.draw,0,0);
+  x.fillStyle='#fff';x.fillRect(0,0,W,H);
+  const bc=document.createElement('canvas');bc.width=W;bc.height=H;const bcx=bc.getContext('2d');bcx.drawImage(cv.bg,0,0);bcx.globalCompositeOperation='destination-out';bcx.drawImage(figc,0,0);x.drawImage(bc,0,0);
+  if($('incBody').checked)x.drawImage(cv.skin,0,0);x.drawImage(cv.draw,0,0);
   x.drawImage($('incBody').checked?cv.line:gl,0,0);x.drawImage(cv.trim,0,0);   /* trims sit over the design lines */
   exportCanvas=c;$('outImg').src=c.toDataURL('image/png');
 }
@@ -781,7 +794,7 @@ window.claude?.use?.('downloads').then(ns=>{downloads=ns;$('savePng').hidden=!ns
 
 /* ---------- persistence ---------- */
 let saveT=0;
-function saveNow(){put('paperdoll-draw-'+S.size,cv.draw.toDataURL());put('paperdoll-trim-'+S.size,cv.trim.toDataURL());}
+function saveNow(){put('paperdoll-draw-'+S.size,cv.draw.toDataURL());put('paperdoll-trim-'+S.size,cv.trim.toDataURL());put('paperdoll-bg-'+S.size,cv.bg.toDataURL());}
 function save(){clearTimeout(saveT);saveT=setTimeout(saveNow,700);}
 function prefs(){put('paperdoll-prefs',JSON.stringify({size:S.size,mirror:S.mirror,penOnly:S.penOnly,inside:S.inside,pieces:S.pieces,color:S.color,skin:S.skin}));}
 function toast(msg){const el=$('toast');el.textContent=msg;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,3200);}
