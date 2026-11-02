@@ -72,6 +72,7 @@ button:focus-visible,input:focus-visible,label.btn:focus-visible{outline:2px sol
 .search{height:34px;border-radius:99px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:inherit;font-size:13px;padding:0 14px;width:100%;box-sizing:border-box}
 .dbody{overflow:auto;padding:4px 14px 16px;display:flex;flex-direction:column;gap:14px}
 .cat h3{margin:0 0 8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.card:disabled{opacity:.45;cursor:not-allowed}
 .card{width:100%;display:flex;flex-direction:column;align-items:stretch;gap:6px;border:1.5px solid var(--line);border-radius:12px;padding:8px;background:var(--paper);text-align:left}
 .card img{width:100%;aspect-ratio:4/3;object-fit:contain;background:#fff;border-radius:8px;max-width:100%}
 .card .nm{display:flex;justify-content:space-between;align-items:center;gap:6px}
@@ -282,9 +283,22 @@ const DESIGNS=[
   {id:'etoile',cat:'Bodice',name:'Etoile Bodice',zh:'Princess-seamed corset',tags:'etoile bodice top corset princess seam 馬甲 上衣'},
   {id:'youthquake',cat:'Bottoms',name:'Youthquake Skirt',zh:'A-line, button front, flap pockets',tags:'youthquake skirt a-line button pocket 裙'},
   {id:'yves',cat:'Bottoms',name:'Yves Trousers',zh:'Pleated, high waist, cuffed hem',tags:'yves trousers pants pleated high waist cuff 長褲 褲'},
-  {id:'princess',cat:'Dress',name:'Princess Dress',zh:'Princess seams, button front',tags:'princess dress button collar long sleeve 洋裝 公主線'}];
+  {id:'princess',cat:'Dress',name:'Princess Dress',zh:'Princess seams, button front',tags:'princess dress button collar long sleeve 洋裝 公主線'},
+  {id:'scoutbodice',cat:'Bodice',name:'Scout Bodice',zh:'Scout series, round neck',tags:'scout bodice top 上衣'},
+  {id:'scoutprincess',cat:'Bodice',name:'Scout Princess Bodice',zh:'Scout series, princess seams',tags:'scout princess bodice top 公主線 上衣'},
+  {id:'scoutcircle',cat:'Bottoms',name:'Scout Circle Skirt',zh:'Scout series, full circle',tags:'scout circle skirt 圓裙 裙'},
+  {id:'scoutpleats',cat:'Bottoms',name:'Scout Pleated Skirt',zh:'Scout series, pleats',tags:'scout pleats pleated skirt 百褶裙 裙'},
+  {id:'scoutscallop',cat:'Sleeves',name:'Scallop Cuff Sleeve',zh:'Scout series, scalloped cuff',tags:'scout scallop cuff sleeve 袖'},
+  {id:'scoutshort',cat:'Sleeves',name:'Short Sleeve',zh:'Scout series',tags:'scout short sleeve 短袖 袖'},
+  {id:'scoutgather',cat:'Sleeves',name:'3/4 Gathered Sleeve',zh:'Scout series, gathered band',tags:'scout 3/4 gather gathered sleeve 七分袖 袖'},
+  {id:'scoutpuff',cat:'Sleeves',name:'Puff Sleeve',zh:'Scout series',tags:'scout puff sleeve 泡泡袖 袖'},
+  {id:'scoutbow',cat:'Accessories',name:'Scout Bow',zh:'Add-on bow',tags:'scout bow ribbon 蝴蝶結'}];
+const has=k=>!!CROQUIS[S.size].pieces[k];                                  /* Scout is Regular only for now */
+const scoutTop=()=>S.pieces.scoutbodice||S.pieces.scoutprincess;            /* Scout sleeves fit only the Scout armholes */
+const shown=k=>S.pieces[k]&&has(k)&&(DESIGNS.find(g=>g.id===k).cat!=='Sleeves'||scoutTop());
 const S={tool:'fill',eraseMode:'all',color:'#e8698a',mat:'solid',photo:null,mirror:true,penOnly:false,size:'regular',zoom:1,skin:0,
-  inside:{ink:false,water:true},pieces:{bodice:true,skirt:true,zelda:false,princess:false,etoile:false,youthquake:false,yves:false},sizes:{ink:4,water:30,fill:0,erase:28,ruffle:24,ricrac:10}};
+  inside:{ink:false,water:true},pieces:{bodice:true,skirt:true,zelda:false,princess:false,etoile:false,youthquake:false,yves:false,
+    scoutbodice:false,scoutprincess:false,scoutcircle:false,scoutpleats:false,scoutscallop:false,scoutshort:false,scoutgather:false,scoutpuff:false,scoutbow:false},sizes:{ink:4,water:30,fill:0,erase:28,ruffle:24,ricrac:10}};
 
 /* ---------- color helpers ---------- */
 const rgb=h=>{h=h.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return[n>>16&255,n>>8&255,n&255]};
@@ -298,14 +312,14 @@ const svgImg=(inner,css)=>new Promise((ok,no)=>{const im=new Image();im.onload=(
   im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB} ${VBH}" width="${W}" height="${H}"><style>${css}</style>${inner}</svg>`);});
 const silOf=ds=>ds.map(p=>`<path d="${p}"/>`).join('');
 let composeId=0;
-const catOf=k=>DESIGNS.find(g=>g.id===k).cat==='Bodice'?1:0;
+const catOf=k=>({Bodice:1,Sleeves:2,Accessories:3})[DESIGNS.find(g=>g.id===k).cat]||0;   /* skirt, top, sleeves, bow */
 function inked(im){   /* white paper -> transparent, ink -> dark line with matching alpha */
   const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d',{willReadFrequently:true});
   x.fillStyle='#fff';x.fillRect(0,0,W,H);x.drawImage(im,0,0);const D=x.getImageData(0,0,W,H),p=D.data;
   for(let i=0;i<p.length;i+=4){const a=255-(p[i]*.299+p[i+1]*.587+p[i+2]*.114);p[i]=35;p[i+1]=31;p[i+2]=32;p[i+3]=Math.min(255,a*1.15);}
   x.putImageData(D,0,0);return c;}
 async function compose(){
-  const id=++composeId,C=CROQUIS[S.size],on=Object.keys(S.pieces).filter(k=>S.pieces[k]).sort((a,b)=>catOf(a)-catOf(b));   /* tops drawn over the skirt */
+  const id=++composeId,C=CROQUIS[S.size],on=Object.keys(S.pieces).filter(shown).sort((a,b)=>catOf(a)-catOf(b));   /* tops drawn over the skirt */
   const lines=on.map(k=>C.pieces[k].lines).join(''),walls=on.map(k=>C.pieces[k].walls).join(''),sil=on.map(k=>silOf(C.pieces[k].sil)).join('');
   const nofill=C.css+'*{fill:none!important}',thick=nofill+'*{stroke-width:2.1px!important;stroke:#000!important}',solid='*{fill:#000;stroke:#000;stroke-width:1px}';
   const keep=C.css+'*{stroke-width:2.1px!important;stroke:#000!important}';   /* garments keep their own white fills, so a layer drawn on top hides the lines under it */
@@ -607,12 +621,13 @@ function buildMats(){
 }
 function buildDesigns(){
   const q=$('search').value.trim().toLowerCase();
-  const list=DESIGNS.filter(g=>!q||(g.name+' '+g.zh+' '+g.tags).toLowerCase().includes(q));
+  const list=DESIGNS.filter(g=>has(g.id)).filter(g=>!q||(g.name+' '+g.zh+' '+g.tags).toLowerCase().includes(q));
   if(!list.length){$('designs').innerHTML=`<p class="empty">No designs match "${q.replace(/[<>&"]/g,'')}". Try bodice or skirt.</p>`;return;}
   const C=CROQUIS[S.size],cats=[...new Set(list.map(g=>g.cat))];
   $('designs').innerHTML=cats.map(cat=>`<div class="cat"><h3>${cat}</h3>${list.filter(g=>g.cat===cat).map(g=>{
     const P=C.pieces[g.id],b=P.box,src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${b.join(' ')}"><style>${C.css}</style>${P.lines}</svg>`);
-    return `<button class="card${S.pieces[g.id]?' on':''}" data-d="${g.id}" aria-pressed="${S.pieces[g.id]}"><img src="${src}" alt="${g.name} line drawing"><span class="nm"><b>${g.name}</b><span>${S.pieces[g.id]?'On':'Off'}</span></span><span style="font-size:12px;color:var(--muted)">${g.zh}</span></button>`;}).join('')}</div>`).join('');
+    const off=g.cat==='Sleeves'&&!scoutTop();
+    return `<button class="card${S.pieces[g.id]?' on':''}" data-d="${g.id}" aria-pressed="${S.pieces[g.id]}"${off?' disabled':''}><img src="${src}" alt="${g.name} line drawing"><span class="nm"><b>${g.name}</b><span>${S.pieces[g.id]?'On':'Off'}</span></span><span style="font-size:12px;color:var(--muted)">${off?'Pick a Scout bodice first':g.zh}</span></button>`;}).join('')}</div>`).join('');
 }
 function buildUI(){
   $('tools').innerHTML=TOOLS.map(([k,n])=>`<button class="tool" data-t="${k}"><img src="${toolPreview(k)}" alt="">${n}</button>`).join('');
@@ -636,7 +651,7 @@ function buildUI(){
   $('penonly').onclick=()=>{S.penOnly=!S.penOnly;sync();toast(S.penOnly?'Pen only: the S Pen draws, fingers move the page':'Fingers and pen both draw');};
   document.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>switchSize(b.dataset.size));
   $('designs').onclick=e=>{const b=e.target.closest('[data-d]');if(!b)return;const k=b.dataset.d,on=!S.pieces[k],cat=DESIGNS.find(g=>g.id===k).cat;
-    if(on)DESIGNS.forEach(g=>{if(g.cat===cat||g.cat==='Dress'||cat==='Dress')S.pieces[g.id]=false;});   /* one top, one bottom at a time; a dress replaces both */
+    if(on&&cat!=='Accessories')DESIGNS.forEach(g=>{if(g.cat!=='Accessories'&&(g.cat===cat||g.cat==='Dress'||cat==='Dress'))S.pieces[g.id]=false;});   /* one top, one bottom, one sleeve at a time; a dress replaces them; accessories add on */
     S.pieces[k]=on;buildDesigns();compose();prefs();};
   $('search').oninput=buildDesigns;
   $('drawerTab').onclick=()=>{$('drawer').classList.toggle('closed');$('drawerTab').setAttribute('aria-label',$('drawer').classList.contains('closed')?'Show designs':'Hide designs');setTimeout(layout,260);};
