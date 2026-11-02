@@ -7,7 +7,13 @@ DES = ROOT + 'design/'   # canonical design folder
 # piece id -> design file stem ('<stem>1.svg' Regular, '<stem>2.svg' Curvier), class prefix
 DESIGNS = [('bodice', 'lisa bodice', 'b'), ('skirt', 'circle skirt', 's'), ('zelda', 'zelda skirt', 'z'), ('princess', 'princess dress', 'p'),
            ('etoile', 'etoile bodice', 'e'), ('youthquake', 'youthquake skirt', 'y'),
-           ('yves', 'yves trouser', 'v')]
+           ('yves', 'yves trouser', 'v'),
+           ('scoutbodice', 'scout bodice', 'sa'), ('scoutprincess', 'scout princess bodice', 'sb'),
+           ('scoutcircle', 'scout circle skirt', 'sc'), ('scoutpleats', 'scout pleats skirt', 'sd'),
+           ('scoutscallop', 'scout scallop cuff sleeve', 'se'), ('scoutshort', 'scout short sleeve', 'sf'),
+           ('scoutgather', 'scout gather sleeve', 'sg'), ('scoutpuff', 'scout puff sleeve', 'sh'),
+           ('scoutbow', 'scout bow', 'si')]
+OPTIONAL = {'scoutbodice', 'scoutprincess', 'scoutcircle', 'scoutpleats', 'scoutscallop', 'scoutshort', 'scoutgather', 'scoutpuff', 'scoutbow'}   # skipped for a size whose file is missing; the app then hides them there
 SHAPES = r'path|line|polygon|polyline|rect|circle|ellipse'
 
 def path_pts(d):
@@ -97,6 +103,8 @@ for key, n in [('regular', '1'), ('curvier', '2')]:
     out[key] = {'css': css, 'body': ''.join(allp), 'walls': ''.join(walls), 'skin': skin,
                 'cover': [d for k, d in named if not k.startswith(('skin', 'hair'))], 'pieces': {}}   # shoes, bra... sit over the skin
     for pid, stem, pre in DESIGNS:
+        key_ = lambda f: re.sub(r'[\s_-]+', '', f.lower())
+        if pid in OPTIONAL and not any(key_(f) == key_(stem + n + '.svg') for f in os.listdir(DES)): continue
         c, piece = design(stem + n + '.svg', pre)
         out[key]['css'] += c
         out[key]['pieces'][pid] = piece
