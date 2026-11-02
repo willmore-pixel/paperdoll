@@ -67,13 +67,13 @@ def parse(path, pre):
         return v
     assert 'transform' not in s and '<image' not in s and 'clip-path' not in s, path
     body = s[s.index('>', s.index('<svg')) + 1:]
-    allp, walls, named, stack = [], [], [], []
+    allp, walls, named, stack, gids = [], [], [], [], []
     for m in re.finditer(r'<(/?)(g|%s)\b([^>]*?)(/?)>' % SHAPES, body):
         close, tag, attrs, _ = m.groups()
         idm = re.search(r'\sid="([^"]+)"', attrs)
         if tag == 'g':      # stack holds "inside a detail group" for each open <g>, so nested groups count too
-            if close: stack.pop()
-            else: stack.append(bool(idm and idm.group(1).startswith('detail')) or (bool(stack) and stack[-1]))
+            if close: stack.pop(); gids.pop()
+            else: gids.append(idm.group(1) if idm else ''); stack.append(bool(idm and idm.group(1).startswith('detail')) or (bool(stack) and stack[-1]))
             continue
         if close: continue
         cls = re.search(r'class="([^"]+)"', attrs)
@@ -83,6 +83,8 @@ def parse(path, pre):
         if cls: el = re.sub(r'class="[^"]+"', 'class="%s"' % cls, el)
         if idm and tag == 'path' and not idm.group(1).startswith('detail'):
             named.append((re.sub(r'[-_]\d+$', '', idm.group(1)), re.search(r'\sd="([^"]+)"', attrs).group(1)))   # 'skin-2' -> ('skin', d)
+        elif not idm and tag == 'path' and gids and gids[-1].startswith('shoe') and not stack[-1]:
+            named.append(('shoe', re.search(r'\sd="([^"]+)"', attrs).group(1)))   # unnamed shapes in a "shoes" group still cover the skin and the background
         allp.append(el)
         if not ((stack and stack[-1]) or (idm and idm.group(1).startswith('detail'))): walls.append(el)   # detail lines show but don't stop Fill
     return css, allp, walls, named
