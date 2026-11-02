@@ -719,12 +719,19 @@ function paint(){
 
 /* ---------- history ---------- */
 const undoS=[],redoS=[];
-const grab=()=>({d:DRAW.getImageData(0,0,W,H),b:BG.getImageData(0,0,W,H),t:tr.getImageData(0,0,W,H)});
-const restore=st=>{DRAW.putImageData(st.d,0,0);BG.putImageData(st.b,0,0);tr.putImageData(st.t,0,0);};
-function snap(){undoS.push(grab());if(undoS.length>15)undoS.shift();redoS.length=0;syncHist();}
+/* each step keeps canvas copies of just the layers it can change: a GPU-side copy, much cheaper than reading pixels back */
+const copyOf=x=>{const c=document.createElement('canvas');c.width=W;c.height=H;c.getContext('2d').drawImage(x.canvas,0,0);return c;};
+/* a ready copy of each layer is made right after every change, while nobody is drawing,
+   so the undo step taken when the next stroke starts costs nothing at the moment of touch */
+const shadow=new Map();let shadowT=0;
+const current=x=>shadow.get(x)||(shadow.set(x,copyOf(x)),shadow.get(x));
+function touched(){shadow.clear();clearTimeout(shadowT);shadowT=setTimeout(()=>{if(!act)[DRAW,BG,tr].forEach(current);},60);}
+const grab=(ls=[DRAW,BG,tr])=>({ls,cs:ls.map(current)});
+const restore=st=>st.ls.forEach((x,i)=>{x.save();x.globalCompositeOperation='copy';x.drawImage(st.cs[i],0,0);x.restore();});
+function snap(ls){undoS.push(grab(ls));if(undoS.length>15)undoS.shift();redoS.length=0;syncHist();}
 function syncHist(){$('undo').disabled=!undoS.length;$('redo').disabled=!redoS.length;}
-function undo(){if(!undoS.length)return;redoS.push(grab());restore(undoS.pop());syncHist();save();}
-function redo(){if(!redoS.length)return;undoS.push(grab());restore(redoS.pop());syncHist();save();}
+function undo(){if(!undoS.length)return;const st=undoS.pop();redoS.push(grab(st.ls));restore(st);syncHist();save();}
+function redo(){if(!redoS.length)return;const st=redoS.pop();undoS.push(grab(st.ls));restore(st);syncHist();save();}
 
 /* ---------- drawing primitives ---------- */
 function both(ctx,fn){fn(ctx);if(S.mirror){ctx.save();ctx.setTransform(-1,0,0,1,W,0);fn(ctx);ctx.restore();}}
@@ -746,32 +753,35 @@ function renderRicrac(x,pts,s,color){
 
 /* ---------- flood fill against the croquis lines ---------- */
 function doFill(sx,sy,bg){   /* bg: a tap outside every outline paints the background */
-  const D=d.getImageData(0,0,W,H),dd=D.data,td=d===BG?new Uint8Array(W*H*4):boundary(),mask=new Uint8Array(W*H);   /* the background layer has no outlines in it */
+  const D=d.getImageData(0,0,W,H),dd=D.data,td=d===BG?null:boundary(),mask=new Uint8Array(W*H);   /* the background layer has no outlines in it */
   if(d===BG)bg=true;
-  let anyOpaque=false;
+  const wall=i=>td&&td[i*4+3]>90;
+  let anyOpaque=false,count=0,bx0=W,by0=H,bx1=-1,by1=-1;   /* filled pixels and their bounding box */
   const flood=(x0,y0)=>{
-    x0|=0;y0|=0;if(x0<0||y0<0||x0>=W||y0>=H)return;const i0=y0*W+x0;if(mask[i0]||td[i0*4+3]>90)return;
+    x0|=0;y0|=0;if(x0<0||y0<0||x0>=W||y0>=H)return;const i0=y0*W+x0;if(mask[i0]||wall(i0))return;
     const sr=dd[i0*4],sg=dd[i0*4+1],sb=dd[i0*4+2],sa=dd[i0*4+3];if(sa>=40)anyOpaque=true;
-    const ok=i=>{if(mask[i]||td[i*4+3]>90)return false;const j=i*4;
+    const ok=i=>{if(mask[i]||wall(i))return false;const j=i*4;
       if(sa<40)return dd[j+3]<40;return Math.abs(dd[j]-sr)<60&&Math.abs(dd[j+1]-sg)<60&&Math.abs(dd[j+2]-sb)<60&&Math.abs(dd[j+3]-sa)<60;};
     const st=[x0,y0];
     while(st.length){let y=st.pop(),x=st.pop();let i=y*W+x;while(x>0&&ok(i-1)){x--;i--;}
-      let up=false,dn=false;
-      while(x<W&&ok(i)){mask[i]=1;
+      let up=false,dn=false;if(x<bx0)bx0=x;if(y<by0)by0=y;if(y>by1)by1=y;
+      while(x<W&&ok(i)){mask[i]=1;count++;if(x>bx1)bx1=x;
         if(y>0){if(ok(i-W)){if(!up){st.push(x,y-1);up=true;}}else up=false;}
         if(y<H-1){if(ok(i+W)){if(!dn){st.push(x,y+1);dn=true;}}else dn=false;}
         x++;i++;}
     }
   };
   flood(sx,sy);if(S.mirror)flood(W-1-sx,sy);
-  let count=0;for(let i=0;i<mask.length;i++)count+=mask[i];
+  if(!count)return false;
   if(count>W*H*.6&&!bg){return false;}          /* sample seeds must not paint the whole sheet */
-  for(let pass=0;pass<2;pass++){const m2=mask.slice();for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;if(!mask[i]&&(mask[i-1]||mask[i+1]||mask[i-W]||mask[i+W]))m2[i]=1;}mask.set(m2);}
-  const mc=document.createElement('canvas');mc.width=W;mc.height=H;const mx=mc.getContext('2d'),MI=mx.createImageData(W,H);
-  for(let i=0;i<mask.length;i++)if(mask[i])MI.data[i*4+3]=255;mx.putImageData(MI,0,0);
-  const tc=document.createElement('canvas');tc.width=W;tc.height=H;const tx=tc.getContext('2d');
-  tx.fillStyle=paint();tx.fillRect(0,0,W,H);tx.globalCompositeOperation='destination-in';tx.drawImage(mc,0,0);
-  d.save();d.globalCompositeOperation=anyOpaque?'source-over':'destination-over';d.drawImage(tc,0,0);d.restore();
+  const X0=Math.max(0,bx0-2),Y0=Math.max(0,by0-2),X1=Math.min(W-1,bx1+2),Y1=Math.min(H-1,by1+2),w=X1-X0+1,h=Y1-Y0+1;
+  if(td)for(let pass=0;pass<2;pass++){const m2=mask.slice();for(let y=Math.max(1,Y0);y<=Math.min(H-2,Y1);y++)for(let x=Math.max(1,X0);x<=Math.min(W-2,X1);x++){const i=y*W+x;if(!mask[i]&&(mask[i-1]||mask[i+1]||mask[i-W]||mask[i+W]))m2[i]=1;}mask.set(m2);}   /* grow 2px under the lines */
+  const mc=document.createElement('canvas');mc.width=w;mc.height=h;const mx=mc.getContext('2d'),MI=mx.createImageData(w,h);
+  for(let y=0;y<h;y++){const r=(Y0+y)*W+X0;for(let x=0;x<w;x++)if(mask[r+x])MI.data[(y*w+x)*4+3]=255;}mx.putImageData(MI,0,0);
+  const tc=document.createElement('canvas');tc.width=w;tc.height=h;const tx=tc.getContext('2d');
+  tx.translate(-X0,-Y0);tx.fillStyle=paint();tx.fillRect(X0,Y0,w,h);tx.setTransform(1,0,0,1,0,0);   /* keep the swatch pattern lined up with the sheet */
+  tx.globalCompositeOperation='destination-in';tx.drawImage(mc,0,0);
+  d.save();d.globalCompositeOperation=anyOpaque?'source-over':'destination-over';d.drawImage(tc,X0,Y0);d.restore();
   return true;
 }
 
@@ -817,7 +827,7 @@ function dabSeg(a,c,b,p0,p1){
 }
 /* watercolour stays inside the outlined area the stroke starts in, so it never bleeds across a seam or outline */
 const clipc=document.createElement('canvas');clipc.width=W;clipc.height=H;const clx=clipc.getContext('2d');let clipOn=false,clipData=null;
-function regionClip(sx,sy){
+function regionClip(sx,sy,preview){
   const td=boundary(),mask=new Uint8Array(W*H);
   const flood=(x0,y0)=>{x0|=0;y0|=0;if(x0<0||y0<0||x0>=W||y0>=H)return;const i0=y0*W+x0;if(mask[i0]||td[i0*4+3]>90)return;
     const ok=i=>!mask[i]&&td[i*4+3]<=90,st=[x0,y0];
@@ -829,6 +839,7 @@ function regionClip(sx,sy){
   if(!n){clipOn=false;return;}                      /* started on a line: paint freely; on the open sheet it stays in the background */
   const m2=mask.slice();for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;if(!mask[i]&&(mask[i-1]||mask[i+1]||mask[i-W]||mask[i+W]))m2[i]=1;}
   const D=clx.createImageData(W,H);for(let i=0;i<m2.length;i++)if(m2[i])D.data[i*4+3]=255;clx.putImageData(D,0,0);clipOn=true;clipData=D.data;
+  if(!preview)return;
   const u=`url(${clipc.toDataURL()})`,st=cv.over.style;st.maskImage=st.webkitMaskImage=u;st.maskSize=st.webkitMaskSize='100% 100%';   /* live preview clipped by CSS, no per-move cost */
 }
 function clipBuf(){if(!clipOn)return;bfx.save();bfx.globalCompositeOperation='destination-in';bfx.drawImage(clipc,0,0);bfx.restore();}
@@ -839,20 +850,20 @@ const GRAIN=(()=>{const s=3,gw=Math.ceil(W/s)+2,R=new Float32Array(gw*(Math.ceil
   for(let y=0;y<H;y++){const gy=y/s,y0=gy|0,fy=gy-y0;for(let x=0;x<W;x++){const gx=x/s,x0=gx|0,fx=gx-x0,i=y0*gw+x0;
     g[y*W+x]=.84+.16*((R[i]*(1-fx)+R[i+1]*fx)*(1-fy)+(R[i+gw]*(1-fx)+R[i+gw+1]*fx)*fy);}}return g;})();
 let wash=null;
-function washStart(){wash={bak:d.getImageData(0,0,W,H).data,dirty:null,raf:0,C:rgb(S.color),k:BUF.water};}
+function washStart(){wash={bakc:current(d).getContext('2d'),dirty:null,raf:0,C:rgb(S.color),k:BUF.water};}
 function washDirty(x,y,r){const q=wash.dirty;const a=[x-r,y-r,x+r,y+r];wash.dirty=q?[Math.min(q[0],a[0]),Math.min(q[1],a[1]),Math.max(q[2],a[2]),Math.max(q[3],a[3])]:a;}
 function washRender(){
   const q=wash.dirty;if(!q)return;wash.dirty=null;const P=12;
   const x0=Math.max(0,Math.floor(q[0]-P)),y0=Math.max(0,Math.floor(q[1]-P)),x1=Math.min(W,Math.ceil(q[2]+P)),y1=Math.min(H,Math.ceil(q[3]+P)),w=x1-x0,h=y1-y0;if(w<=0||h<=0)return;
   const B=bfx.getImageData(x0,y0,w,h).data;
-  const bak=wash.bak,out=d.createImageData(w,h),O=out.data,C=wash.C,lnC=C.map(v=>Math.log(Math.max(v,1))),k=wash.k,E=[0,0,0],M=[0,0,0];
+  const bak=wash.bakc.getImageData(x0,y0,w,h).data,out=d.createImageData(w,h),O=out.data,C=wash.C,lnC=C.map(v=>Math.log(Math.max(v,1))),k=wash.k,E=[0,0,0],M=[0,0,0];
   for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){
     const bi=(yy*w+xx)*4,gi=(y0+yy)*W+x0+xx,si=gi*4;
-    O[bi]=bak[si];O[bi+1]=bak[si+1];O[bi+2]=bak[si+2];O[bi+3]=bak[si+3];
+    O[bi]=bak[bi];O[bi+1]=bak[bi+1];O[bi+2]=bak[bi+2];O[bi+3]=bak[bi+3];
     const a=Math.min(1,B[bi+3]/235);if(a<.004)continue;
     let c=k*a*(.92+.5*a*(1-a))*GRAIN[gi];   /* slight pooling where the wash thins out at its edge */if(clipOn)c*=clipData[si+3]/255;if(c<.004)continue;if(c>.95)c=.95;
-    const da=bak[si+3]/255;let pe=0;
-    for(let j=0;j<3;j++){E[j]=255-(255-bak[si+j])*da;pe=Math.max(pe,(255-E[j])/255);}
+    const da=bak[bi+3]/255;let pe=0;
+    for(let j=0;j<3;j++){E[j]=255-(255-bak[bi+j])*da;pe=Math.max(pe,(255-E[j])/255);}
     let lo=9,hi=-9;for(let j=0;j<3;j++){const q=255-C[j];if(q>24){const t=(255-E[j])/q;lo=Math.min(lo,t);hi=Math.max(hi,t);}}
     const tint=hi-lo<.12;   /* existing paint is a lighter wash of this same colour */
     const wn=tint?c*1.5:c*2.5,ce=tint?c*(1-.5*Math.min(1,pe*2.5)):c;let mn=255;   /* same colour: merge, deepen gently; other colours: glaze */
@@ -872,12 +883,13 @@ sheet.addEventListener('pointerdown',e=>{
   e.preventDefault();sheet.setPointerCapture(e.pointerId);
   const p=pos(e);hideSample();
   if(onBg(p.x,p.y)&&(S.tool==='fill'||S.inside[S.tool])&&!(S.tool==='erase'&&S.eraseMode==='trims'))d=BG;   /* Clip on: stays in the background behind the figure; off: paints in front */
-  if(S.tool==='fill'){snap();const ok=doFill(p.x,p.y,true);d=DRAW;if(ok)save();else{undoS.pop();syncHist();toast('Tap inside an outlined area to fill it');}return;}
-  snap();act={id:e.pointerId,pts:[p],mid:p,acc:1e9,lp:p.p,ang:null,n:0};
+  if(S.tool==='fill'){snap([d]);const ok=doFill(p.x,p.y,true);d=DRAW;if(ok)save();else{undoS.pop();syncHist();toast('Tap inside an outlined area to fill it');}return;}
+  snap(S.tool==='ruffle'||S.tool==='ricrac'?[tr]:S.tool!=='erase'?[d]:S.eraseMode==='trims'?[tr]:d===BG?[BG,...(S.eraseMode==='all'?[tr]:[])]:[DRAW,BG,tr]);
+  act={id:e.pointerId,pts:[p],mid:p,acc:1e9,lp:p.p,ang:null,n:0};
   if(isDab()){if(BUF[S.tool]){if(S.inside[S.tool]&&d!==BG)regionClip(p.x,p.y);else clipOn=false;startBuf();dabSeg(p,p,p,p.p,p.p);showBuf();}}
   else if(S.tool==='ink'||S.tool==='erase'){
-    if(S.tool==='ink'&&S.inside.ink&&d!==BG){regionClip(p.x,p.y);if(clipOn){act.inkBuf=true;bfx.clearRect(0,0,W,H);}}
-    if(S.tool==='erase'&&S.inside.erase&&d!==BG){regionClip(p.x,p.y);act.eraseClip=clipOn;cv.over.style.maskImage=cv.over.style.webkitMaskImage='';}
+    if(S.tool==='ink'&&S.inside.ink&&d!==BG){regionClip(p.x,p.y,true);if(clipOn){act.inkBuf=true;bfx.clearRect(0,0,W,H);}}
+    if(S.tool==='erase'&&S.inside.erase&&d!==BG){regionClip(p.x,p.y);act.eraseClip=clipOn;}
     strokeSeg(p,p,{x:p.x+.01,y:p.y},widthFor(p.p));if(act.inkBuf)showBuf();}
 });
 sheet.addEventListener('pointermove',e=>{
@@ -1038,6 +1050,7 @@ async function loadDrawing(){
     const sb=store('paperdoll-bg-'+S.size);if(sb){try{const im=await loadImg(sb);BG.clearRect(0,0,W,H);BG.drawImage(im,0,0);}catch(e){}}
     const st=store('paperdoll-trim-'+S.size);if(st){try{const im=await loadImg(st);tr.clearRect(0,0,W,H);tr.drawImage(im,0,0);}catch(e){}}}
   else sample();
+  touched();
 }
 
 /* ---------- layout & zoom ---------- */
@@ -1073,7 +1086,7 @@ window.claude?.use?.('downloads').then(ns=>{downloads=ns;$('savePng').hidden=!ns
 /* ---------- persistence ---------- */
 let saveT=0;
 function saveNow(){put('paperdoll-draw-'+S.size,cv.draw.toDataURL());put('paperdoll-trim-'+S.size,cv.trim.toDataURL());put('paperdoll-bg-'+S.size,cv.bg.toDataURL());}
-function save(){clearTimeout(saveT);saveT=setTimeout(saveNow,700);}
+function save(){touched();clearTimeout(saveT);saveT=setTimeout(saveNow,700);}
 function prefs(){put('paperdoll-prefs',JSON.stringify({size:S.size,mirror:S.mirror,penOnly:S.penOnly,inside:S.inside,pieces:S.pieces,color:S.color,skin:S.skin}));}
 function toast(msg){const el=$('toast');el.textContent=msg;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,3200);}
 let sampleShown=false;
