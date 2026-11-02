@@ -507,7 +507,7 @@ function strokeSeg(a,c,b,w){
       x.beginPath();x.moveTo(a.x,a.y);x.quadraticCurveTo(c.x,c.y,b.x,b.y);x.stroke();x.restore();});clipBuf();
     for(const t of S.eraseMode==='trims'?[tr]:S.eraseMode==='paint'?[d]:[d,tr]){t.save();t.globalCompositeOperation='destination-out';t.drawImage(buf,0,0);t.restore();}
     bfx.clearRect(0,0,W,H);return;}
-  const targets=act&&act.inkBuf?[bfx]:S.tool!=='erase'?[d]:S.eraseMode==='trims'?[tr]:S.eraseMode==='paint'?[d]:[d,tr];
+  const targets=act&&act.inkBuf?[bfx]:S.tool!=='erase'?[d]:S.eraseMode==='trims'?[tr]:[d,...(S.eraseMode==='all'?[tr]:[]),...(d===DRAW?[BG]:[])];   /* an unclipped eraser also wipes the background */
   for(const t of targets)both(t,x=>{x.save();x.lineCap='round';x.lineJoin='round';x.lineWidth=w;
     if(S.tool==='erase'){x.globalCompositeOperation='destination-out';x.strokeStyle='#000';}else x.strokeStyle=S.color;
     x.beginPath();x.moveTo(a.x,a.y);x.quadraticCurveTo(c.x,c.y,b.x,b.y);x.stroke();x.restore();});
@@ -593,7 +593,7 @@ sheet.addEventListener('pointerdown',e=>{
   if(S.penOnly&&e.pointerType==='touch'){act={pan:true,id:e.pointerId,x:e.clientX,y:e.clientY,sl:stage.scrollLeft,st:stage.scrollTop};return;}
   e.preventDefault();sheet.setPointerCapture(e.pointerId);
   const p=pos(e);hideSample();
-  if(onBg(p.x,p.y)&&['fill','ink','water','erase'].includes(S.tool)&&!(S.tool==='erase'&&S.eraseMode==='trims'))d=BG;
+  if(onBg(p.x,p.y)&&(S.tool==='fill'||S.inside[S.tool])&&!(S.tool==='erase'&&S.eraseMode==='trims'))d=BG;   /* Clip on: stays in the background behind the figure; off: paints in front */
   if(S.tool==='fill'){snap();const ok=doFill(p.x,p.y,true);d=DRAW;if(ok)save();else{undoS.pop();syncHist();toast('Tap inside an outlined area to fill it');}return;}
   snap();act={id:e.pointerId,pts:[p],mid:p,acc:1e9,lp:p.p,ang:null,n:0};
   if(isDab()){if(BUF[S.tool]){if(S.inside[S.tool]&&d!==BG)regionClip(p.x,p.y);else clipOn=false;startBuf();dabSeg(p,p,p,p.p,p.p);showBuf();}}
